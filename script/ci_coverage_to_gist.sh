@@ -9,9 +9,9 @@ if [ ! -f "$COVERAGE_FILE" ]; then
   exit 1
 fi
 
-total_lines=$(grep -Po 'LF:\K\d+' "$COVERAGE_FILE" | paste -sd+ - | bc)
-covered_lines=$(grep -Po 'LH:\K\d+' "$COVERAGE_FILE" | paste -sd+ - | bc)
-if [ "$total_lines" -eq 0 ]; then
+total_lines=$(awk -F: '/^LF:/ {s+=$2} END {print s}' "$COVERAGE_FILE")
+covered_lines=$(awk -F: '/^LH:/ {s+=$2} END {print s}' "$COVERAGE_FILE")
+if [ -z "$total_lines" ] || [ "$total_lines" -eq 0 ]; then
   COVERAGE_PERCENT=0
 else
   COVERAGE_PERCENT=$(awk "BEGIN { printf \"%.1f\", ($covered_lines/$total_lines)*100 }")
