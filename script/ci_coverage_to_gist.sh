@@ -18,12 +18,25 @@ else
 fi
 
 # 2. Create JSON for shields.io
-echo '{' > coverage.json
-echo '  "schemaVersion": 1,' >> coverage.json
-echo '  "label": "coverage",' >> coverage.json
-echo '  "message": "'${COVERAGE_PERCENT}'%",' >> coverage.json
-echo '  "color": "brightgreen"' >> coverage.json
-echo '}' >> coverage.json
+cat > coverage.json <<EOF
+{
+  "schemaVersion": 1,
+  "label": "coverage",
+  "message": "${COVERAGE_PERCENT}%",
+  "color": "brightgreen"
+}
+EOF
+
+# 3. Create payload for Gist API
+cat > payload.json <<EOF
+{
+  "files": {
+    "coverage.json": {
+      "content": $(jq -Rs . < coverage.json)
+    }
+  }
+}
+EOF
 
 # 3. Upload to Gist (requires GIST_ID and GIST_TOKEN)
 GIST_ID=${GIST_ID:-"YOUR_GIST_ID"}
@@ -34,9 +47,8 @@ if [ "$GIST_ID" = "YOUR_GIST_ID" ] || [ "$GIST_TOKEN" = "YOUR_GIST_TOKEN" ]; the
   exit 1
 fi
 
-COVERAGE_JSON_ESCAPED=$(cat coverage.json | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
-
 curl -X PATCH \
   -H "Authorization: token $GIST_TOKEN" \
-  -d '{"files": {"coverage.json": {"content": "'$COVERAGE_JSON_ESCAPED'"}}}' \
+  -H "Content-Type: application/json" \
+  --data-binary @payload.json \
   https://api.github.com/gists/$GIST_ID
