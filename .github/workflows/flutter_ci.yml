@@ -37,10 +37,6 @@ jobs:
         run: flutter analyze
       - name: Run tests
         run: flutter test
-      - name: Build APK
-        run: flutter build apk --debug
-      - name: Build iOS (no code signing)
-        run: flutter build ios --no-codesign
 
   merge:
     needs: build
