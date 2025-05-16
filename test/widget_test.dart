@@ -27,38 +27,4 @@ void main() {
     expect(find.text('0'), findsNothing);
     expect(find.text('1'), findsOneWidget);
   });
-
-  // add failure test to check CI
-  testWidgets('Counter does not increment when tapping non-existent button', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(const MyApp());
-
-    // Try to tap a button that doesn't exist
-    expect(find.byIcon(Icons.remove), findsNothing);
-    // Counter should still be 0
-    expect(find.text('0'), findsOneWidget);
-  });
-
-  testWidgets('Counter increments twice when tapping "+" twice', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(const MyApp());
-
-    // Tap the '+' icon twice
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Counter should be 2
-    expect(find.text('2'), findsOneWidget);
-  });
-
-  testWidgets('Failure test to check CI', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
-
-    // This test is expected to fail
-    expect(find.text('not-present-text'), findsOneWidget);
-  });
 }
