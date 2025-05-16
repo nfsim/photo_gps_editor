@@ -9,17 +9,21 @@ if [ ! -f "$COVERAGE_FILE" ]; then
   exit 1
 fi
 
-COVERAGE_PERCENT=$(genhtml $COVERAGE_FILE --stdout | grep -o 'lines......: [0-9.]*%' | awk '{print $2}' | tr -d '%')
+total_lines=$(grep -Po 'LF:\K\d+' "$COVERAGE_FILE" | paste -sd+ - | bc)
+covered_lines=$(grep -Po 'LH:\K\d+' "$COVERAGE_FILE" | paste -sd+ - | bc)
+if [ "$total_lines" -eq 0 ]; then
+  COVERAGE_PERCENT=0
+else
+  COVERAGE_PERCENT=$(awk "BEGIN { printf \"%.1f\", ($covered_lines/$total_lines)*100 }")
+fi
 
 # 2. Create JSON for shields.io
-cat <<EOF > coverage.json
-{
-  "schemaVersion": 1,
-  "label": "coverage",
-  "message": "${COVERAGE_PERCENT}%",
-  "color": "brightgreen"
-}
-EOF
+echo '{' > coverage.json
+echo '  "schemaVersion": 1,' >> coverage.json
+echo '  "label": "coverage",' >> coverage.json
+echo '  "message": "'${COVERAGE_PERCENT}'%",' >> coverage.json
+echo '  "color": "brightgreen"' >> coverage.json
+echo '}' >> coverage.json
 
 # 3. Upload to Gist (requires GIST_ID and GIST_TOKEN)
 GIST_ID=${GIST_ID:-"YOUR_GIST_ID"}
@@ -30,7 +34,9 @@ if [ "$GIST_ID" = "YOUR_GIST_ID" ] || [ "$GIST_TOKEN" = "YOUR_GIST_TOKEN" ]; the
   exit 1
 fi
 
+COVERAGE_JSON_ESCAPED=$(cat coverage.json | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
+
 curl -X PATCH \
   -H "Authorization: token $GIST_TOKEN" \
-  -d '{"files": {"coverage.json": {"content": "'$(cat coverage.json | sed 's/"/\\"/g')'"}}}' \
+  -d '{"files": {"coverage.json": {"content": "'$COVERAGE_JSON_ESCAPED'"}}}' \
   https://api.github.com/gists/$GIST_ID
