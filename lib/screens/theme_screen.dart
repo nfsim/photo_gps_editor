@@ -149,7 +149,7 @@ class _TextItem {
 Color _getContrastColor(Color color) {
   // YIQ 공식으로 명도에 따라 흰색/검정 텍스트 선택 (0~255 보장)
   // 완전한 흰색(0xFFFFFFFF) 또는 매우 밝은 색상은 무조건 검정색 반환
-  if (color.value == 0xFFFFFFFF) return Colors.black;
+  if (color == Colors.white) return Colors.black;
   final r = color.r.round();
   final g = color.g.round();
   final b = color.b.round();
@@ -159,7 +159,16 @@ Color _getContrastColor(Color color) {
 
 String _colorToHex(Color color) {
   // Flutter Color의 int 값을 0xAARRGGBB 형태로 변환
-  return '0x${color.value.toRadixString(16).padLeft(8, '0').toUpperCase()}';
+  final red =
+      (color.r * 255).toInt().toRadixString(16).padLeft(2, '0').toUpperCase();
+  final green =
+      (color.g * 255).toInt().toRadixString(16).padLeft(2, '0').toUpperCase();
+  final blue =
+      (color.b * 255).toInt().toRadixString(16).padLeft(2, '0').toUpperCase();
+  final alpha =
+      (color.a * 255).toInt().toRadixString(16).padLeft(2, '0').toUpperCase();
+
+  return '0x$alpha$red$green$blue';
 }
 
 String _weightToString(FontWeight weight) {
