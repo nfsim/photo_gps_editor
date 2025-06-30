@@ -14,7 +14,7 @@ void main() {
     );
 
     // 기본 미리보기 텍스트 존재
-    expect(find.text('가나다 ABCD 1234'), findsOneWidget);
+    expect(find.text('가나다 ABCD 1234'), findsNWidgets(3));
     // 드롭다운 존재
     expect(find.byType(DropdownButton<String?>), findsOneWidget);
 
@@ -30,7 +30,7 @@ void main() {
     // Noto Sans KR 선택
     await tester.tap(find.text('Noto Sans KR').last);
     await tester.pumpAndSettle();
-    // 미리보기 텍스트가 여전히 존재(폰트 적용 확인은 golden test 필요)
-    expect(find.text('가나다 ABCD 1234'), findsOneWidget);
+    // 미리보기 텍스트가 3개 존재(폰트 적용 확인은 golden test 필요)
+    expect(find.text('가나다 ABCD 1234'), findsNWidgets(3));
   });
 }
