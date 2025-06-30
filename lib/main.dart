@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../constants/app_theme.dart';
+import 'providers/font_provider.dart';
+import 'screens/settings/font_settings_screen.dart';
 import 'screens/theme_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => FontProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -11,12 +19,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // [iOS TODO]
+    // - iOS에서는 커스텀 폰트 사용 시 Info.plist에 폰트 파일 등록 필요 (Runner > Info.plist > UIAppFonts)
+    // - iOS 시뮬레이터/실기기에서 폰트 적용 및 fallback 동작 별도 테스트 필요
+    // - 일부 폰트는 iOS에서 미지원/렌더링 차이 발생 가능성 있음
+    // - 향후 iOS 전용 폰트 fallback/override 로직 추가 고려
     return MaterialApp(
       title: 'Flutter Demo',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
       home: const ScreenListPage(),
+      builder: (context, child) {
+        final fontProvider = Provider.of<FontProvider>(context);
+        final locale = Localizations.localeOf(context);
+        final fontFamily = fontProvider.getEffectiveFontFamily(locale);
+        final theme = Theme.of(context);
+        return Theme(
+          data: theme.copyWith(
+            textTheme: theme.textTheme.apply(fontFamily: fontFamily),
+          ),
+          child: child!,
+        );
+      },
     );
   }
 }
@@ -79,10 +104,7 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings Screen')),
-      body: const Center(child: Text('Settings Screen')),
-    );
+    return FontSettingsScreen();
   }
 }
 
