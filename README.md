@@ -10,6 +10,9 @@
 - [한국어로 보기 (README.ko.md)](README.ko.md)
 - [View in English (README.en.md)](README.en.md)
 
+## 🎨 Design Guide
+- [Theme/Font 디자인 가이드](doc/design/theme_guide.md)
+
 ## 📝 License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
