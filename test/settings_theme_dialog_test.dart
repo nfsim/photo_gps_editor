@@ -6,19 +6,28 @@ import 'package:photo_gps_editor/providers/theme_provider.dart';
 import 'package:photo_gps_editor/screens/settings/theme_screen.dart';
 
 void main() {
-  testWidgets('ThemeScreen에서 현재 선택된 theme에 체크(v) 표시 및 변경', (WidgetTester tester) async {
+  testWidgets('ThemeScreen에서 현재 선택된 theme에 체크(v) 표시 및 변경', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => FontProvider()),
           ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ],
-        child: MaterialApp(home: Builder(
-          builder: (context) => ElevatedButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ThemeScreen())),
-            child: const Text('Go Theme'),
+        child: MaterialApp(
+          home: Builder(
+            builder:
+                (context) => ElevatedButton(
+                  onPressed:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => ThemeScreen()),
+                      ),
+                  child: const Text('Go Theme'),
+                ),
           ),
-        )),
+        ),
       ),
     );
     // ThemeScreen 진입
