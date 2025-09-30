@@ -4,39 +4,44 @@ import 'package:provider/provider.dart';
 import 'package:photo_gps_editor/providers/font_provider.dart';
 import 'package:photo_gps_editor/providers/theme_provider.dart';
 import 'package:photo_gps_editor/screens/settings/settings_screen.dart';
+import 'package:photo_gps_editor/screens/settings/theme_screen.dart';
 
 void main() {
-  testWidgets('Theme 선택 다이얼로그에서 현재 선택된 theme에 체크(v) 표시', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('ThemeScreen에서 현재 선택된 theme에 체크(v) 표시 및 변경', (WidgetTester tester) async {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => FontProvider()),
           ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ],
-        child: const MaterialApp(home: SettingsScreen()),
+        child: MaterialApp(home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ThemeScreen())),
+            child: const Text('Go Theme'),
+          ),
+        )),
       ),
     );
-    // Theme ListTile을 탭
-    await tester.tap(find.text('Theme'));
+    // ThemeScreen 진입
+    await tester.tap(find.text('Go Theme'));
     await tester.pumpAndSettle();
-    // 다이얼로그 내 theme 목록 존재
-    expect(find.widgetWithText(SimpleDialogOption, 'System'), findsOneWidget);
-    expect(find.widgetWithText(SimpleDialogOption, 'Light'), findsOneWidget);
-    expect(find.widgetWithText(SimpleDialogOption, 'Dark'), findsOneWidget);
+    // ThemeMode 목록 존재
+    expect(find.widgetWithText(ListTile, 'System'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'Light'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'Dark'), findsOneWidget);
     // 기본값 System에 체크(v) 아이콘 존재
-    final systemOption = find.widgetWithText(SimpleDialogOption, 'System');
+    final systemOption = find.widgetWithText(ListTile, 'System');
     expect(
       find.descendant(of: systemOption, matching: find.byIcon(Icons.check)),
       findsOneWidget,
     );
     // Light 선택 시 체크가 이동
-    await tester.tap(find.widgetWithText(SimpleDialogOption, 'Light'));
+    await tester.tap(find.widgetWithText(ListTile, 'Light'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Theme'));
+    // 다시 진입
+    await tester.tap(find.text('Go Theme'));
     await tester.pumpAndSettle();
-    final lightOption = find.widgetWithText(SimpleDialogOption, 'Light');
+    final lightOption = find.widgetWithText(ListTile, 'Light');
     expect(
       find.descendant(of: lightOption, matching: find.byIcon(Icons.check)),
       findsOneWidget,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:photo_gps_editor/providers/font_provider.dart';
+import 'package:photo_gps_editor/providers/theme_provider.dart';
 import 'package:photo_gps_editor/screens/settings/settings_screen.dart';
 
 void main() {
@@ -9,8 +10,11 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (_) => FontProvider(),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => FontProvider()),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ],
         child: const MaterialApp(home: SettingsScreen()),
       ),
     );
@@ -25,8 +29,8 @@ void main() {
     expect(find.text('Version'), findsOneWidget);
     expect(find.text('Contact'), findsOneWidget);
     // 서브타이틀(기본값)
-    expect(find.text('System'), findsNWidgets(2));
-    expect(find.text('1.0.0'), findsOneWidget);
-    expect(find.text('dev@example.com'), findsOneWidget);
+  expect(find.text('System'), findsNWidgets(2));
+  expect(find.text('1.0.0'), findsOneWidget);
+  expect(find.text('nfsim.dev@gmail.com'), findsOneWidget);
   });
 }
