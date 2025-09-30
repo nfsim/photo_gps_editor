@@ -1,5 +1,10 @@
 # 이슈별 Planning Template 및 가이드 (issue_planning.rule)
 
+---
+## [공통] Workflow 규칙 안내
+- 본 파일을 포함한 모든 workflow/rule 파일은 반드시 doc/rules/workflow_common.md(공통 규칙)을 준수해야 함
+
+
 이 파일은 새로운 이슈(기능/개선/버그 등) 진행 시 일관된 설계·구현·테스트 계획을 수립하기 위한 템플릿과 체크리스트입니다.
 
 ---

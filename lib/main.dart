@@ -35,6 +35,9 @@ class MyApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,
       home: const ScreenListPage(),
+      routes: {
+        '/devmode': (context) => const DevModeScreen(),
+      },
       builder: (context, child) {
         final fontProvider = Provider.of<FontProvider>(context);
         final locale = Localizations.localeOf(context);

@@ -9,8 +9,15 @@ import 'theme_screen.dart';
 const String kAppVersion = '1.0.0'; // pubspec.yaml에서 수동 동기화 필요
 const String kContactEmail = 'nfsim.dev@gmail.com'; // README.md에서 연동
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  int _aboutTapCount = 0;
 
   static const _themeLabels = {
     ThemeMode.system: 'System',
@@ -58,11 +65,25 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           const Divider(),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text(
-              'About',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _aboutTapCount++;
+                if (_aboutTapCount >= 10) {
+                  _aboutTapCount = 0;
+                  Navigator.pushNamed(context, '/devmode');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('개발자 모드로 진입합니다.')),
+                  );
+                }
+              });
+            },
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                'About',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
             ),
           ),
           ListTile(

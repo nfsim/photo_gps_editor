@@ -29,8 +29,8 @@ void main() {
     expect(find.text('Version'), findsOneWidget);
     expect(find.text('Contact'), findsOneWidget);
     // 서브타이틀(기본값)
-  expect(find.text('System'), findsNWidgets(2));
-  expect(find.text('1.0.0'), findsOneWidget);
-  expect(find.text('nfsim.dev@gmail.com'), findsOneWidget);
+    expect(find.text('System'), findsNWidgets(2));
+    expect(find.text('1.0.0'), findsOneWidget);
+    expect(find.text('nfsim.dev@gmail.com'), findsOneWidget);
   });
 }
