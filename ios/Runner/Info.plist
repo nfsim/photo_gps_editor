@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>사진 라이브러리에서 사진을 선택하고 읽기 위해 필요합니다.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>사진의 GPS 정보를 표시하기 위해 위치 정보가 필요합니다.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>항상 위치 정보를 사용하여 사진 위치 정보를 확인합니다.</string>
 </dict>
 </plist>
