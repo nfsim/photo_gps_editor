@@ -1,9 +1,13 @@
+# Photo GPS Editor (한국어)
+
 ## 📖 프로젝트 개요
-**앱 명칭:** Photo GPS Editor  
-**목표:** 사용자가 저장한 사진들의 GPS 정보를 쉽게 검색, 필터링, 수정할 수 있도록 지원  
+
+**앱 명칭:** Photo GPS Editor
+**목표:** 사용자가 저장한 사진들의 GPS 정보를 쉽게 검색, 필터링, 수정할 수 있도록 지원
 **대상:** 사진 위치 정보를 관리하려는 일반 사용자 및 사진 작가
 
 ## 🛠️ 기술 스택 및 도구
+
 - **언어:** Dart (Flutter 프레임워크)
 - **추천 IDE:** Visual Studio Code, Android Studio
 - **이미지 처리:** flutter_exif_plugin, image
@@ -13,6 +17,7 @@
 - **AI 코딩 어시스턴트:** GitHub Copilot
 
 ## 🚀 주요 기능
+
 - **이미지 파일 스캔 및 수집:**
   - 기기/갤러리 내 사진 자동 스캔
   - 디렉토리/촬영 기간별 필터링
@@ -35,5 +40,6 @@
   - 데이터 암호화/클라우드 연동(옵션)
 
 ## 🌐 언어(Language) 선택
+
 - [한국어 README 보기](README.ko.md)
 - [View in English](README.en.md)
