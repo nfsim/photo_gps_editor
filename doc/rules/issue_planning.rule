@@ -9,12 +9,13 @@
 
 ---
 
-## 0. 실제 이슈 내용 확인 (github CLI 활용)
-- planning.md 작성 전, 반드시 `gh issue view <번호> --json title,body` 등 github CLI 명령어로 실제 이슈의 제목/본문/첨부를 확인한다.
+
+## 0. 실제 이슈 내용 확인 (GitHub MCP/코딩 에이전트 활용)
+- planning.md 작성 전, 반드시 GitHub MCP(Model Context Protocol) 또는 코딩 에이전트 API를 활용해 실제 이슈의 제목/본문/첨부를 확인한다.
 - 실제 이슈 내용(요구사항, 예시, 첨부 이미지 등)을 기반으로 planning을 작성한다.
-- (예시 명령)
-  - `gh issue view 51 --json title,body`
-  - `gh issue view <번호> --json title,body,comments`
+- (예시 방법)
+   - MCP/코딩 에이전트에서 이슈 번호로 제목, 본문, 코멘트 등 조회
+   - 예: "이슈 #51의 제목/본문/코멘트 정보를 MCP로 조회"
 
 ---
 

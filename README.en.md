@@ -1,9 +1,13 @@
+# Photo GPS Editor (English)
+
 ## 📖 Project Overview
-**App Name:** Photo GPS Editor  
-**Goal:** Help users easily search, filter, and edit GPS information in their saved photos  
+
+**App Name:** Photo GPS Editor
+**Goal:** Help users easily search, filter, and edit GPS information in their saved photos
 **Target Users:** General users and photographers who want to manage photo location data
 
 ## 🛠️ Tech Stack & Tools
+
 - **Language:** Dart (Flutter framework)
 - **Recommended IDE:** Visual Studio Code, Android Studio
 - **Image Processing:** flutter_exif_plugin, image
@@ -12,6 +16,7 @@
 - **Permissions:** Android/iOS file and location permissions
 
 ## 🚀 Main Features
+
 - **Image File Scan & Collection:**
   - Automatically scan device/gallery for photos
   - Filter by directory or date
@@ -34,5 +39,6 @@
   - Optional data encryption/cloud sync
 
 ## 🌐 Language Selection
+
 - [View in Korean](README.ko.md)
 - [View in English](README.en.md)
