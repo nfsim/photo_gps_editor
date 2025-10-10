@@ -9,6 +9,26 @@
 - 모든 새로운 작업(기능 추가, 버그 수정 등) 시작 시, `origin/main`을 기반으로 새로운 branch를 생성한다.
 - Branch 이름은 feature/{이슈번호}-{설명} 형식을 따른다. (예: feature/2-plugin-configure)
 
+- **Branch 전략 옵션**:
+  - **옵션 A (기본, 안정성 우선)**: 각 이슈별 독립 브랜치 생성
+    - 장점: 독립적 개발, 쉬운 코드리뷰, 명확한 git history
+    - 단점: 브랜치 관리 오버헤드, 빈번한 merge 충돌 가능성
+    - 권장 사용: 복잡도가 높은 기능, 멀티 개발자 협업
+
+  - **옵션 B (효율성 우선)**: 관련 이슈 통합 브랜치 (현재 사용중)
+    - 장점: 연속 작업 가능, 통합 테스트 용이, 개발 효율성 높음
+    - 단점: 큰 PR, 코드리뷰 어려움, git history 혼란
+    - 권장 사용: 관련도가 높은 기능 덩어리, 빠른 프로토타이핑
+
+- **Branch 생성 시점 규칙**:
+  - PR이 머지될 때까지 다음 작업은 같은 브랜치에 추가하지 말고 새 브랜치 생성
+  - 긴 PR 방지를 위해 기능 단위를 적절히 분리
+  - 예외 상황: 이미 열려있는 PR에 critical fix나 관련 기능 추가 시
+
+- **Branch 검증**:
+  - planning.md 작성 시 현재 branch 상태 확인
+  - 잘못된 브랜치일 경우 명확한 안내 메시지 표시
+
 ## 2. 대화 및 의사소통 기록
 
 - 모든 workflow 진행 및 의사소통 기록은 반드시 `issue_chat.rule`을 따라 `doc/issues/issueXX_chat.md` 파일에 남긴다.
@@ -21,6 +41,24 @@
 ## 4. PR(Pull Request) 생성
 
 - PR 생성 시 템플릿을 사용하고, 변경 요약/테스트 결과/관련 이슈를 명확히 작성한다.
+- **PR 범위 가이드**:
+  - 단일 기능 중심으로 유지 (긴 PR 방지)
+  - 여러 이슈 포함 시 논리적 그룹화 명시
+  - Review-ready 상태에서만 PR 생성
+  - Draft PR 활용 방안:
+    - 초기 검토 요청: Draft로 표시하여 피드백 수집
+    - 최종 병합 준비: Draft 해제하여 Formal review 요청
+
+## 4.5. PR 관리 정책
+
+- **Merging 전략**: Squash merge 선호 (깔끔한 git history)
+- **Review 정책**:
+  - 1명 이상의 Code review 필수
+  - CI/CD 통과 확인
+  - Breaking changes는 Team review 요청
+- **PR 클로징 정책**:
+  - Auto-close: 관련 이슈 자동 클로징
+  - Manual close: 요구사항 변경 등 사유 있을 시
 
 ## 5. 문서화
 
