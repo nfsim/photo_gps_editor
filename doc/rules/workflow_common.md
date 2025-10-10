@@ -14,13 +14,48 @@
 - 모든 workflow 진행 및 의사소통 기록은 반드시 `issue_chat.rule`을 따라 `doc/issues/issueXX_chat.md` 파일에 남긴다.
 - 시간, 사용자, Copilot 답변 등은 규칙에 맞게 기록한다.
 
-## 3. 커밋 메시지
+## 3. 커밋 메시지 및 Git 관리
+
+### 3.1. 커밋 메시지 규칙
 
 - 커밋 메시지는 명확하고 일관된 형식을 따른다. (별도 규칙 파일이 있을 경우 그에 따름)
 
-## 4. PR(Pull Request) 생성
+### 3.2. Git 충돌 방지 전략
+
+#### 3.2.1. 프리 커밋 전략
+
+- **main 브랜치 최신화 주기**: 최대 **6시간마다** `git fetch origin && git rebase origin/main` 실행
+- **커밋 빈도**: 대량 변경 시 분할 커밋으로 atomic 단위 유지
+- **브랜치 생명주기**: 동일 issue에 **1개 브랜치만** 운영, 콘플릭트 시 즉시 해결
+
+#### 3.2.2. 푸시 규칙
+
+- **푸시 빈도 제한**: 최대 **1일**/1회 푸시를 원칙으로 전방향 테스트 후 실시
+- **브랜치별 역할분담**: feature 브랜치는 기능 개발 전용, main 브랜치는 배포 전용
+
+#### 3.2.3. 도구 활용
+
+- `git status --ahead-behind` 명령어로 브랜치 상태 사전 확인
+- conflict 발생시 즉각 팀원 공유 및 협력 solve
+
+## 4. PR(Pull Request) 생성 및 충돌 대응
+
+### 4.1. PR 생성 규칙
 
 - PR 생성 시 템플릿을 사용하고, 변경 요약/테스트 결과/관련 이슈를 명확히 작성한다.
+- `gh pr checks <PR_NUMBER>`로 PR 충돌 상태 사전 모니터링
+
+### 4.2. 충돌 발생시 대응 프로토콜
+
+```
+🚨 CONFLICT 감지시:
+1. 즉시 작업 일시정지
+2. git stash (작업 중 코드 임시 저장)
+3. git fetch origin && git rebase origin/main
+4. 충돌 파일 수동 해결 (커밋별 diff 참조)
+5. git continue (또는 --skip/--abort)
+6. 작업 재개
+```
 
 ## 5. 문서화
 
