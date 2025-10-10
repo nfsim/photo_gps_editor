@@ -28,7 +28,7 @@ jobs:
       - name: Analyze
         run: flutter analyze
       - name: Run tests with coverage
-        run: flutter test --coverage
+        run: flutter test --coverage --platform=vm
       - name: Install lcov
         run: |
           brew install lcov
