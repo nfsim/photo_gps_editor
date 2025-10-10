@@ -38,4 +38,11 @@ Issue #5 이미지 파일 스캔 및 수집 기능 구현을 완료했습니다.
 ✅ UI 구현 완료
 ✅ 권한 처리 로직 구현
 
+## PR 생성 완료: <https://github.com/nfsim/photo_gps_editor/pull/61>
+
+이 PR은 Issues #2와 #5를 모두 포함:
+
+- Issue #2: Plugin configuration 완료
+- Issue #5: Image file scanning & collection 완료
+
 다음 단계: 선택된 사진들의 EXIF 데이터 추출 및 GPS 정보 처리 (Issue #7)
