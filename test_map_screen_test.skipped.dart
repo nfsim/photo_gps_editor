@@ -8,6 +8,10 @@ import 'package:photo_gps_editor/models/photo_model.dart';
 import 'package:photo_gps_editor/screens/map_screen.dart';
 import 'package:photo_gps_editor/services/map_service.dart';
 
+// @Skip("CI 환경에서 플랫폼뷰 로드 제한으로 인한 테스트 실패") // CI에서 skip하기 위해서는 이 주석 제거
+// CI 환경에서는 플랫폼뷰 로드 제한으로 테스트를 skip합니다.
+// 실제 기능 검증은 수동 검증 체크리스트(doc/workflow/manual_verification_checklist_issue8.md)를 사용하세요.
+
 // Mock 방식을 사용하여 외부 디펜던시들 mocking
 class MockMapController {
   static const String mockAuthorizationSuccessLog =
