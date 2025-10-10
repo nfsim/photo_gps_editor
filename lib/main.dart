@@ -5,6 +5,7 @@ import 'providers/font_provider.dart';
 import 'providers/photo_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/image_select_screen.dart';
+import 'screens/map_screen.dart';
 import 'screens/settings/settings_screen.dart' as settings;
 import 'screens/theme_screen.dart';
 
@@ -60,6 +61,7 @@ class ScreenListPage extends StatelessWidget {
 
   static final List<ScreenItem> screens = [
     ScreenItem('Image Select', Icons.photo_library, const ImageSelectScreen()),
+    ScreenItem('Map View', Icons.map, const MapScreen()),
     ScreenItem('Theme', Icons.palette, ThemeScreen()),
     ScreenItem('Intro', Icons.info_outline, IntroScreen()),
     ScreenItem('Settings', Icons.settings, SettingsScreen()),
