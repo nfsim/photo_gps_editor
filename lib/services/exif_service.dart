@@ -87,14 +87,13 @@ class ExifService {
   /// DMS (Degrees, Minutes, Seconds) 형식을 Decimal Degrees로 변환
   static double? _convertGpsToDecimal(dynamic values, String ref) {
     try {
-      // IfdValues를 List로 변환
-      final List<dynamic> gpsList = _convertIfdValuesToList(values);
-      if (gpsList.length < 3) return null;
+      // GPS 데이터는 보통 3개의 값으로 구성됨 (도, 분, 초)
+      if (values is! List || values.length < 3) return null;
 
-      // EXIF GPS 값 처리 (exif 패키지 형식에 따라)
-      final degrees = _extractNumericValue(gpsList[0]);
-      final minutes = _extractNumericValue(gpsList[1]);
-      final seconds = _extractNumericValue(gpsList[2]);
+      // 각 GPS 값 추출 (GPS 형식)
+      final degrees = _extractGpsValue(values[0]);
+      final minutes = _extractGpsValue(values[1]);
+      final seconds = _extractGpsValue(values[2]);
 
       if (degrees == null || minutes == null || seconds == null) {
         return null;
@@ -115,31 +114,23 @@ class ExifService {
     }
   }
 
-  /// IfdValues를 List로 변환
-  static List<dynamic> _convertIfdValuesToList(dynamic values) {
-    if (values is List) return values;
-    // exif 패키지의 IfdValues 타입에 따라 변환
-    return values?.values?.toList() ?? [];
-  }
-
-  /// 다양한 형식의 숫자 값 추출
-  static double? _extractNumericValue(dynamic value) {
+  /// GPS 값에서 숫자 추출 (exif 패키지 값들 처리용)
+  static double? _extractGpsValue(dynamic value) {
     try {
+      // exif 패키지에서는 값들이 이미 double이나 num으로 올 수 있음
       if (value is num) {
         return value.toDouble();
-      } else if (value is List && value.length >= 1) {
-        // GPS 값은 다양한 형식으로 올 수 있음
-        final firstValue = value[0];
-        if (firstValue is num) {
-          return firstValue.toDouble();
-        } else if (firstValue is String) {
-          return double.tryParse(firstValue);
-        }
+      } else if (value is String) {
+        return double.tryParse(value);
+      } else if (value is List && value.isNotEmpty) {
+        // 리스트인 경우 재귀적으로 첫 번째 값 처리
+        return _extractGpsValue(value[0]);
+      } else {
+        // 마지막으로 toString()해서 숫자 파싱 시도
+        return double.tryParse(value.toString());
       }
-      // 다른 형식이 있다면 추가 처리 가능
-      return double.tryParse(value.toString());
     } catch (e) {
-      print('숫자 값 추출 중 오류: $e');
+      print('GPS 값 추출 중 오류: $e (${value?.runtimeType})');
       return null;
     }
   }
