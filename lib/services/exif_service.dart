@@ -55,23 +55,62 @@ class ExifService {
   /// GPS 데이터를 추출하고 Decimal 좌표로 변환
   static Map<String, dynamic>? _extractGpsData(Map<String, IfdTag> data) {
     try {
+      print('GPS 데이터 추출 시작...');
+
+      // 디버깅: 모든 GPS 관련 키 확인
+      final gpsKeys = data.keys.where((k) => k.contains('GPS')).toList();
+      print('GPS 관련 키들: $gpsKeys');
+
       // GPS 위도 추출 및 변환
       final latitudeRef = data['GPS GPSLatitudeRef']?.toString();
-      final latitudeValues = data['GPS GPSLatitude']?.values;
+      final latitudeTag = data['GPS GPSLatitude'];
+      final latitudeValues = latitudeTag?.values;
+
+      print('GPS GPSLatitude tag: $latitudeTag');
+      print(
+        'GPS GPSLatitude values: $latitudeValues (type: ${latitudeValues?.runtimeType})',
+      );
 
       // GPS 경도 추출 및 변환
       final longitudeRef = data['GPS GPSLongitudeRef']?.toString();
-      final longitudeValues = data['GPS GPSLongitude']?.values;
+      final longitudeTag = data['GPS GPSLongitude'];
+      final longitudeValues = longitudeTag?.values;
+
+      print(
+        'GPS GPSLongitude values: $longitudeValues (type: ${longitudeValues?.runtimeType})',
+      );
+      print('Refs - Lat: $latitudeRef, Lon: $longitudeRef');
 
       if (latitudeValues == null ||
           longitudeValues == null ||
           latitudeRef == null ||
           longitudeRef == null) {
+        print('GPS 데이터 불완전 - 값들이 null입니다');
         return null; // GPS 데이터 불완전
       }
 
-      final latitude = _convertGpsToDecimal(latitudeValues, latitudeRef);
-      final longitude = _convertGpsToDecimal(longitudeValues, longitudeRef);
+      // IfdValues를 List로 변환
+      final latValuesList = latitudeValues.toList();
+      final lonValuesList = longitudeValues.toList();
+
+      print('DMS 값들 정리:');
+      print('  위도 리스트: $latValuesList (${latValuesList.runtimeType})');
+      for (int i = 0; i < latValuesList.length; i++) {
+        print(
+          '  위도[$i]: ${latValuesList[i]} (${latValuesList[i].runtimeType})',
+        );
+      }
+      print('  경도 리스트: $lonValuesList (${lonValuesList.runtimeType})');
+      for (int i = 0; i < lonValuesList.length; i++) {
+        print(
+          '  경도[$i]: ${lonValuesList[i]} (${lonValuesList[i].runtimeType})',
+        );
+      }
+
+      final latitude = _convertGpsToDecimal(latValuesList, latitudeRef);
+      final longitude = _convertGpsToDecimal(lonValuesList, longitudeRef);
+
+      print('변환된 좌표 - 위도: $latitude, 경도: $longitude');
 
       if (latitude == null || longitude == null) {
         return null;
@@ -114,20 +153,55 @@ class ExifService {
     }
   }
 
-  /// GPS 값에서 숫자 추출 (exif 패키지 값들 처리용)
+  /// GPS 값에서 숫자 추출 (exif 패키지 Rational 값 처리용)
   static double? _extractGpsValue(dynamic value) {
     try {
-      // exif 패키지에서는 값들이 이미 double이나 num으로 올 수 있음
+      // exif 패키지에서는 값들이 Rational 형태로 "813/25" 등으로 올 수 있음
       if (value is num) {
         return value.toDouble();
+      } else if (value is Ratio) {
+        // Ratio 타입 처리 (exif 패키지의 Rational 수)
+        return value.toDouble();
       } else if (value is String) {
-        return double.tryParse(value);
+        // Rational 값들 처리: "813/25" -> 32.52
+        final stringValue = value.toString().trim();
+
+        // 분수 표현 처리 (예: "813/25")
+        if (stringValue.contains('/')) {
+          final parts = stringValue.split('/');
+          if (parts.length == 2) {
+            final numerator = double.tryParse(parts[0]);
+            final denominator = double.tryParse(parts[1]);
+            if (numerator != null && denominator != null && denominator != 0) {
+              return numerator / denominator;
+            }
+          }
+        }
+
+        // 일반 숫자 파싱
+        return double.tryParse(stringValue);
       } else if (value is List && value.isNotEmpty) {
         // 리스트인 경우 재귀적으로 첫 번째 값 처리
         return _extractGpsValue(value[0]);
       } else {
-        // 마지막으로 toString()해서 숫자 파싱 시도
-        return double.tryParse(value.toString());
+        // 다른 형식의 값들 처리 (Rational 객체 등)
+        final stringValue = value.toString();
+
+        // Rational 문짝수열일 경우 처리
+        if (stringValue.contains('(') && stringValue.contains(')')) {
+          // Rational 객체의 toString형태일 경우
+          final match = RegExp(r'(\d+)/(\d+)').firstMatch(stringValue);
+          if (match != null) {
+            final numerator = double.tryParse(match.group(1)!);
+            final denominator = double.tryParse(match.group(2)!);
+            if (numerator != null && denominator != null && denominator != 0) {
+              return numerator / denominator;
+            }
+          }
+        }
+
+        // 마지막으로 직접 숫자 파싱 시도
+        return double.tryParse(stringValue.replaceAll(RegExp(r'[^\d./-]'), ''));
       }
     } catch (e) {
       print('GPS 값 추출 중 오류: $e (${value?.runtimeType})');
