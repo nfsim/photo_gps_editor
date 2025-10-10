@@ -16,6 +16,9 @@ class ImageSelectScreen extends StatefulWidget {
 
 class _ImageSelectScreenState extends State<ImageSelectScreen> {
   final ImagePicker _picker = ImagePicker();
+  bool _isExtractingExif = false; // EXIF 추출 중인지 여부
+  int _extractionProgress = 0; // 추출 진행률
+  int _totalPhotos = 0; // 전체 사진 수
 
   @override
   void initState() {
@@ -111,6 +114,65 @@ class _ImageSelectScreenState extends State<ImageSelectScreen> {
     }
   }
 
+  Future<void> _extractExifFromSelected() async {
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+
+    if (photoProvider.selectedPhotos.isEmpty) return;
+
+    setState(() {
+      _isExtractingExif = true;
+      _extractionProgress = 0;
+      _totalPhotos = photoProvider.selectedPhotoCount;
+    });
+
+    try {
+      await photoProvider.extractExifFromSelectedPhotos(
+        onProgress: (completed, total) {
+          if (mounted) {
+            setState(() {
+              _extractionProgress = completed;
+            });
+          }
+        },
+        onError: (error) {
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('EXIF 추출 오류: $error')));
+          }
+        },
+      );
+
+      if (mounted) {
+        setState(() {
+          _isExtractingExif = false;
+        });
+
+        final gpsCount = photoProvider.getPhotosWithGpsData().length;
+        final noGpsCount = photoProvider.photosWithoutGpsDataCount;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'EXIF 추출 완료! GPS: ${gpsCount}장, GPS 없음: ${noGpsCount}장',
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isExtractingExif = false;
+        });
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('EXIF 추출 중 오류 발생: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -185,6 +247,100 @@ class _ImageSelectScreenState extends State<ImageSelectScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
+                  ],
+                ),
+              );
+            },
+          ),
+
+          // EXIF 추출 영역 (사진이 선택된 경우에만 표시)
+          Consumer<PhotoProvider>(
+            builder: (context, photoProvider, child) {
+              if (photoProvider.selectedPhotos.isEmpty) {
+                return const SizedBox.shrink();
+              }
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed:
+                                _isExtractingExif
+                                    ? null
+                                    : _extractExifFromSelected,
+                            icon: const Icon(Icons.search),
+                            label: const Text('EXIF 데이터 추출'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              );
+            },
+          ),
+
+          // 선택 상태 표시 (GPS 정보 포함)
+          Consumer<PhotoProvider>(
+            builder: (context, photoProvider, child) {
+              if (photoProvider.selectedPhotos.isEmpty) {
+                return const SizedBox.shrink();
+              }
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '선택된 사진: ${photoProvider.selectedPhotoCount}장',
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                        if (_isExtractingExif)
+                          Row(
+                            children: [
+                              Text(
+                                '$_extractionProgress / $_totalPhotos',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              const SizedBox(width: 8),
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          'GPS 데이터: ${photoProvider.getPhotosWithGpsData().length}장',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          'GPS 없음: ${photoProvider.photosWithoutGpsDataCount}장',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               );

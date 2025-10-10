@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/photo_model.dart';
+import '../services/exif_service.dart';
 
 class PhotoProvider extends ChangeNotifier {
   final List<PhotoModel> _selectedPhotos = [];
@@ -106,5 +107,71 @@ class PhotoProvider extends ChangeNotifier {
     final photo = _selectedPhotos.removeAt(oldIndex);
     _selectedPhotos.insert(newIndex, photo);
     notifyListeners();
+  }
+
+  // 선택된 모든 사진들의 EXIF 데이터 추출 (비동기)
+  Future<void> extractExifFromSelectedPhotos({
+    void Function(int completed, int total)? onProgress,
+    void Function(String error)? onError,
+  }) async {
+    if (_selectedPhotos.isEmpty) return;
+
+    final photoFiles = _selectedPhotos.map((photo) => photo.file).toList();
+    final results = await ExifService.extractMultipleExifData(
+      photoFiles,
+      onProgress: onProgress,
+    );
+
+    for (final result in results) {
+      final index = result['index'] as int;
+      final exifData = result['exifData'] as Map<String, dynamic>?;
+
+      if (exifData != null) {
+        try {
+          updatePhotoInfo(
+            _selectedPhotos[index].id,
+            takenDate: exifData['takenDate'] as DateTime?,
+            latitude: exifData['latitude'] as double?,
+            longitude: exifData['longitude'] as double?,
+            device: exifData['device'] as String?,
+            hasExif: exifData['hasExif'] as bool?,
+          );
+        } catch (e) {
+          final errorMsg = '사진 EXIF 업데이트 중 오류: $e';
+          print(errorMsg);
+          onError?.call(errorMsg);
+        }
+      } else {
+        // EXIF 데이터가 없는 사진 표시
+        updatePhotoInfo(_selectedPhotos[index].id, hasExif: false);
+      }
+    }
+  }
+
+  // 단일 사진의 EXIF 데이터 추출
+  Future<void> extractExifFromPhoto(
+    PhotoModel photo, {
+    void Function(String error)? onError,
+  }) async {
+    try {
+      final exifData = await ExifService.extractExifData(photo.file);
+
+      if (exifData != null) {
+        updatePhotoInfo(
+          photo.id,
+          takenDate: exifData['takenDate'] as DateTime?,
+          latitude: exifData['latitude'] as double?,
+          longitude: exifData['longitude'] as double?,
+          device: exifData['device'] as String?,
+          hasExif: exifData['hasExif'] as bool?,
+        );
+      } else {
+        updatePhotoInfo(photo.id, hasExif: false);
+      }
+    } catch (e) {
+      final errorMsg = '사진 EXIF 추출 중 오류: $e';
+      print(errorMsg);
+      onError?.call(errorMsg);
+    }
   }
 }
