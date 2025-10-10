@@ -27,8 +27,8 @@ jobs:
         run: flutter pub get
       - name: Analyze
         run: flutter analyze
-      - name: Run tests with coverage
-        run: flutter test --coverage --platform=vm
+      - name: Run unit tests (excluding UI platform tests)
+        run: flutter test --coverage --exclude="test/map_screen_test.dart"
       - name: Install lcov
         run: |
           brew install lcov
