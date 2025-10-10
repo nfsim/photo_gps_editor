@@ -15,7 +15,8 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   late GoogleMapController _mapController;
   final Set<Marker> _markers = {};
-  CameraPosition _initialCameraPosition = MapService.getInitialCameraPosition();
+  final CameraPosition _initialCameraPosition =
+      MapService.getInitialCameraPosition();
 
   @override
   void initState() {
