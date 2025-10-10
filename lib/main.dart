@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_theme.dart';
 import 'providers/font_provider.dart';
+import 'providers/photo_provider.dart';
 import 'providers/theme_provider.dart';
+import 'screens/image_select_screen.dart';
 import 'screens/settings/settings_screen.dart' as settings;
 import 'screens/theme_screen.dart';
 
@@ -12,6 +14,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => FontProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => PhotoProvider()),
       ],
       child: const MyApp(),
     ),
@@ -35,9 +38,7 @@ class MyApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,
       home: const ScreenListPage(),
-      routes: {
-        '/devmode': (context) => const DevModeScreen(),
-      },
+      routes: {'/devmode': (context) => const DevModeScreen()},
       builder: (context, child) {
         final fontProvider = Provider.of<FontProvider>(context);
         final locale = Localizations.localeOf(context);
@@ -58,6 +59,7 @@ class ScreenListPage extends StatelessWidget {
   const ScreenListPage({super.key});
 
   static final List<ScreenItem> screens = [
+    ScreenItem('Image Select', Icons.photo_library, const ImageSelectScreen()),
     ScreenItem('Theme', Icons.palette, ThemeScreen()),
     ScreenItem('Intro', Icons.info_outline, IntroScreen()),
     ScreenItem('Settings', Icons.settings, SettingsScreen()),
