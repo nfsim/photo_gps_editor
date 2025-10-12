@@ -22,10 +22,8 @@ class _MapScreenState extends State<MapScreen> {
   // 선택된 사진 ID 추적
   String? _selectedPhotoId;
 
-  // 수동 GPS 마커 (Long Press로 설정한 좌표)
-  Marker? _manualGpsMarker;
-  // 수동 GPS 좌표 (마커에서 사용)
-  LatLng? _manualGpsCoordinates;
+  // Long Press로 선택된 GPS 위치 (저장 버튼에서 사용할 미리보기 좌표)
+  LatLng? _selectedLocationForGPS;
 
   @override
   void initState() {
@@ -56,6 +54,8 @@ class _MapScreenState extends State<MapScreen> {
   void _addMarkersForPhotos(List<PhotoModel> photos) {
     setState(() {
       _markers.clear();
+
+      // 사진 마커 추가
       for (final photo in photos) {
         if (photo.latitude != null && photo.longitude != null) {
           final markerId = MarkerId(photo.id);
@@ -80,9 +80,21 @@ class _MapScreenState extends State<MapScreen> {
         }
       }
 
-      // 수동 GPS 마커 추가
-      if (_manualGpsMarker != null) {
-        _markers.add(_manualGpsMarker!);
+      // 선택된 GPS 위치 미리보기 마커 추가
+      if (_selectedLocationForGPS != null) {
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('selected_gps_location'),
+            position: _selectedLocationForGPS!,
+            infoWindow: InfoWindow(
+              title: '🎯 선택된 GPS 위치',
+              snippet: '저장 버튼을 눌러 사진에 적용하세요',
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueOrange,
+            ),
+          ),
+        );
       }
     });
   }
@@ -152,65 +164,48 @@ class _MapScreenState extends State<MapScreen> {
     _mapController = controller;
   }
 
-  void _onMapLongPress(LatLng position) async {
+  void _onMapLongPress(LatLng position) {
     final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
-    final selectedPhotos =
+    final selectedPhotosWithoutGps =
         photoProvider.selectedPhotos.where((p) => !p.hasGpsData).toList();
 
-    if (selectedPhotos.isEmpty) {
+    if (selectedPhotosWithoutGps.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('GPS 좌표를 저장할 사진이 없습니다.\n모든 선택된 사진에 이미 GPS 정보가 있습니다.'),
+          content: Text(
+            'GPS 좌표를 적용할 수 있는 사진이 없습니다.\n모든 선택된 사진에 이미 GPS 정보가 있습니다.',
+          ),
           duration: Duration(seconds: 3),
         ),
       );
       return;
     }
 
-    // GPS 없는 선택된 사진들에 Long Press 좌표 적용
-    await _applyGpsToSelectedPhotos(position, selectedPhotos);
-
+    // Long Press는 GPS 위치 선택만 (미리보기)
     setState(() {
-      // 수동 GPS 좌표 저장
-      _manualGpsCoordinates = position;
-
-      // 기존 GPS 마커 제거
-      _manualGpsMarker = Marker(
-        markerId: const MarkerId('manual_gps_marker'),
-        position: position,
-        infoWindow: InfoWindow(
-          title: '📍 수동 GPS 설정 위치 - 터치로 선택',
-          snippet:
-              '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
-          onTap: () {
-            // 마커 터치 시 해당 좌표 선택 상태로 만들기
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'GPS 좌표 선택됨: (${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)})',
-                ),
-                action: SnackBarAction(
-                  label: '저장',
-                  onPressed: () => _saveGPSToPhotoAtCoordinates(position),
-                ),
-                duration: const Duration(seconds: 4),
-              ),
-            );
-          },
-        ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
-      );
-
+      _selectedLocationForGPS = position;
       _updateMarkers();
     });
 
     // 사용자 피드백
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          'GPS 좌표가 설정되었습니다: (${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)})',
+        content: Row(
+          children: [
+            const Icon(Icons.location_on, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'GPS 위치 선택됨: (${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)})\n저장 버튼을 눌러 사진에 적용하세요',
+              ),
+            ),
+          ],
         ),
-        duration: const Duration(seconds: 3),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: '저장',
+          onPressed: () => _applySelectedLocationToPhotos(),
+        ),
       ),
     );
   }
@@ -451,10 +446,9 @@ class _MapScreenState extends State<MapScreen> {
         // PhotoProvider에서 GPS 좌표 업데이트 (important!)
         photoProvider.setGPS(position.latitude, position.longitude);
 
-        // 마커 제거
+        // 선택된 GPS 위치 클리어 (다음 작업을 위해)
         setState(() {
-          _manualGpsMarker = null;
-          _manualGpsCoordinates = null;
+          _selectedLocationForGPS = null;
           _updateMarkers();
         });
 
@@ -498,6 +492,45 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  Future<void> _applySelectedLocationToPhotos() async {
+    if (_selectedLocationForGPS == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            '먼저 지도에서 GPS 위치를 선택해주세요.\nLong Press로 원하는 위치를 선택한 후 저장 버튼을 누르세요.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+    final selectedPhotosWithoutGps =
+        photoProvider.selectedPhotos.where((p) => !p.hasGpsData).toList();
+
+    if (selectedPhotosWithoutGps.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('GPS 좌표를 적용할 사진이 없습니다.\n모든 선택된 사진에 이미 GPS 정보가 있습니다.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // 선택된 GPS 위치를 GPS 없는 사진들에 적용
+    await _applyGpsToSelectedPhotos(
+      _selectedLocationForGPS!,
+      selectedPhotosWithoutGps,
+    );
+
+    // 적용 완료 후 선택된 위치 클리어
+    setState(() {
+      _selectedLocationForGPS = null;
+      _updateMarkers();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -520,8 +553,8 @@ class _MapScreenState extends State<MapScreen> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton(
-            onPressed: _saveGPSToPhoto,
-            tooltip: 'GPS 정보 저장',
+            onPressed: _applySelectedLocationToPhotos,
+            tooltip: '선택된 GPS 위치를 사진에 적용',
             backgroundColor: Theme.of(context).colorScheme.secondary,
             child: const Icon(Icons.save),
           ),
