@@ -65,16 +65,18 @@ class ExifUtils {
     }
   }
 
-  static Future<void> setGPS(
+  static Future<Map<String, dynamic>> setGPS(
     String path,
     double latitude,
     double longitude, [
     double altitude = 0,
   ]) async {
-    await _exifChannel.invokeMethod('setGPS', {
+    final result = await _exifChannel.invokeMethod('setGPS', {
       'filePath': path,
       'latitude': latitude,
       'longitude': longitude,
     });
+
+    return Map<String, dynamic>.from(result ?? {});
   }
 }

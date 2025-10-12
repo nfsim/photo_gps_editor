@@ -277,30 +277,50 @@ class _MapScreenState extends State<MapScreen> {
       ).showSnackBar(const SnackBar(content: Text('GPS 정보를 사진에 저장하는 중...')));
 
       // GPS 주소를 파일에 저장 (현재 좌표 사용)
-      await ExifUtils.setGPS(
+      final result = await ExifUtils.setGPS(
         currentPhoto.path,
         currentPhoto.latitude ?? 0.0,
         currentPhoto.longitude ?? 0.0,
       );
 
-      // 성공 후 사진 정보 업데이트 (GPS 데이터 추가됨 표시)
-      photoProvider.updatePhotoInfo(
-        currentPhoto.id,
-        latitude: currentPhoto.latitude ?? 0.0,
-        longitude: currentPhoto.longitude ?? 0.0,
-        hasExif: true,
-      );
+      // 결과 확인
+      if (result.containsKey('exifSaved') && result['exifSaved'] == true) {
+        // 성공 후 사진 정보 업데이트 (GPS 데이터 추가됨 표시)
+        photoProvider.updatePhotoInfo(
+          currentPhoto.id,
+          latitude: currentPhoto.latitude ?? 0.0,
+          longitude: currentPhoto.longitude ?? 0.0,
+          hasExif: true,
+        );
 
-      // 성공 피드백
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('GPS 정보가 사진 파일에 성공적으로 저장되었습니다!')),
-      );
+        // 성공 피드백
+        if (!mounted) return;
+        final gallerySuccess = result['galleryAdded'] as bool? ?? false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              gallerySuccess
+                  ? 'GPS 정보가 사진에 저장되고 갤러리로 복사되었습니다!\n(Google Photos에서 새로고침해보세요)'
+                  : 'GPS 정보가 사진에 저장되었습니다!\n(갤러리 재활성화 필요)',
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
 
-      // 선택 해제 (다음 선택을 위해)
-      _selectedPhotoId = null;
-      photoProvider.setCurrentPhoto(null);
-      _addMarkersForPhotos(photoProvider.getPhotosWithGpsData());
+        // 선택 해제 (다음 선택을 위해)
+        _selectedPhotoId = null;
+        photoProvider.setCurrentPhoto(null);
+        _addMarkersForPhotos(photoProvider.getPhotosWithGpsData());
+      } else {
+        // EXIF 저장 실패
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('GPS 좌표를 EXIF에 저장할 수 없습니다. 사진 권한을 확인해주세요.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       // 실패 피드백
       if (!mounted) return;
@@ -328,37 +348,57 @@ class _MapScreenState extends State<MapScreen> {
       ).showSnackBar(const SnackBar(content: Text('수동 GPS 좌표를 사진에 저장하는 중...')));
 
       // GPS 주소를 파일에 저장 (선택된 좌표 사용)
-      await ExifUtils.setGPS(
+      final result = await ExifUtils.setGPS(
         currentPhoto.path,
         position.latitude,
         position.longitude,
       );
 
-      // 성공 후 사진 정보 업데이트 (GPS 데이터 추가됨 표시)
-      photoProvider.updatePhotoInfo(
-        currentPhoto.id,
-        latitude: position.latitude,
-        longitude: position.longitude,
-        hasExif: true,
-      );
+      // 결과 확인 및 처리
+      if (result.containsKey('exifSaved') && result['exifSaved'] == true) {
+        // 성공 후 사진 정보 업데이트 (GPS 데이터 추가됨 표시)
+        photoProvider.updatePhotoInfo(
+          currentPhoto.id,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          hasExif: true,
+        );
 
-      // 마커 제거
-      setState(() {
-        _manualGpsMarker = null;
-        _manualGpsCoordinates = null;
-        _updateMarkers();
-      });
+        // 마커 제거
+        setState(() {
+          _manualGpsMarker = null;
+          _manualGpsCoordinates = null;
+          _updateMarkers();
+        });
 
-      // 성공 피드백
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('수동 GPS 좌표가 사진에 성공적으로 저장되었습니다!')),
-      );
+        // 성공 피드백
+        if (!mounted) return;
+        final gallerySuccess = result['galleryAdded'] as bool? ?? false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              gallerySuccess
+                  ? '수동 GPS 좌표가 사진에 저장되고 갤러리로 복사되었습니다!\n(Google Photos에서 새로고침해보세요)'
+                  : '수동 GPS 좌표가 사진에 저장되었습니다!\n(갤러리 재활성화 필요)',
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
 
-      // 선택 해제 (다음 선택을 위해)
-      _selectedPhotoId = null;
-      photoProvider.setCurrentPhoto(null);
-      _addMarkersForPhotos(photoProvider.getPhotosWithGpsData());
+        // 선택 해제 (다음 선택을 위해)
+        _selectedPhotoId = null;
+        photoProvider.setCurrentPhoto(null);
+        _addMarkersForPhotos(photoProvider.getPhotosWithGpsData());
+      } else {
+        // EXIF 저장 실패
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('GPS 좌표를 EXIF에 저장할 수 없습니다. 사진 권한을 확인해주세요.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       // 실패 피드백
       if (!mounted) return;
