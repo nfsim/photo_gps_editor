@@ -118,7 +118,7 @@ class PhotoProvider extends ChangeNotifier {
   }
 
   // GPS editing current photo management
-  void setCurrentPhoto(PhotoModel photo) {
+  void setCurrentPhoto(PhotoModel? photo) {
     if (_currentPhoto != photo) {
       _currentPhoto = photo;
       _undoStack.clear();

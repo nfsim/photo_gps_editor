@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/photo_model.dart';
 import '../providers/photo_provider.dart';
 import '../services/map_service.dart';
+import '../utils/exif_utils.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -17,6 +18,9 @@ class _MapScreenState extends State<MapScreen> {
   final Set<Marker> _markers = {};
   final CameraPosition _initialCameraPosition =
       MapService.getInitialCameraPosition();
+
+  // 선택된 사진 ID 추적
+  String? _selectedPhotoId;
 
   @override
   void initState() {
@@ -50,23 +54,63 @@ class _MapScreenState extends State<MapScreen> {
       for (final photo in photos) {
         if (photo.latitude != null && photo.longitude != null) {
           final markerId = MarkerId(photo.id);
+          final isSelected = _selectedPhotoId == photo.id;
+
           _markers.add(
             Marker(
               markerId: markerId,
               position: LatLng(photo.latitude!, photo.longitude!),
               infoWindow: InfoWindow(
-                title: '사진 위치',
+                title: isSelected ? '📍 선택된 사진' : '사진 위치',
                 snippet: photo.takenDate?.toString() ?? '촬영일 미상',
-                onTap: () => _showPhotoDetails(photo),
               ),
               icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueAzure,
+                isSelected
+                    ? BitmapDescriptor.hueGreen
+                    : BitmapDescriptor.hueAzure,
               ),
+              onTap: () => _selectPhoto(photo),
             ),
           );
         }
       }
     });
+  }
+
+  void _selectPhoto(PhotoModel photo) {
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+
+    setState(() {
+      // 사진 선택 토글
+      _selectedPhotoId = _selectedPhotoId == photo.id ? null : photo.id;
+
+      if (_selectedPhotoId != null) {
+        // PhotoProvider에 선택된 사진 설정
+        photoProvider.setCurrentPhoto(photo);
+
+        // 성공 피드백
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📍 "${photo.path.split('/').last}" 사진을 선택했습니다'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        // 선택 해제 - null 넣지 말고 null이 아닌 photo 객체 유지
+        _selectedPhotoId = null;
+        photoProvider.setCurrentPhoto(null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('사진 선택이 해제되었습니다'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    });
+
+    // 마커 업데이트
+    final photosWithGps = photoProvider.getPhotosWithGpsData();
+    _addMarkersForPhotos(photosWithGps);
   }
 
   void _adjustCameraToFitPhotos(List<PhotoModel> photos) {
@@ -94,28 +138,7 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  void _showPhotoDetails(PhotoModel photo) {
-    showModalBottomSheet(
-      context: context,
-      builder:
-          (context) => Container(
-            height: 200,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('사진 정보', style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 16),
-                Text('위치: ${photo.latitude}, ${photo.longitude}'),
-                if (photo.takenDate != null)
-                  Text('촬영일: ${photo.takenDate!.toString()}'),
-                if (photo.device != null) Text('기기: ${photo.device}'),
-                Text('경로: ${photo.path}'),
-              ],
-            ),
-          ),
-    );
-  }
+
 
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
@@ -163,6 +186,58 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  Future<void> _saveGPSToPhoto() async {
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+    final currentPhoto = photoProvider.currentPhoto;
+
+    if (currentPhoto == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('GPS를 저장할 사진을 선택해주세요.')));
+      return;
+    }
+
+    try {
+      // ScaffoldMessenger를 통해 진행 상황 표시
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('GPS 정보를 사진에 저장하는 중...')));
+
+      // GPS 주소를 파일에 저장 (현재 좌표 사용)
+      await ExifUtils.setGPS(
+        currentPhoto.path,
+        currentPhoto.latitude ?? 0.0,
+        currentPhoto.longitude ?? 0.0,
+      );
+
+      // 성공 후 사진 정보 업데이트 (GPS 데이터 추가됨 표시)
+      photoProvider.updatePhotoInfo(
+        currentPhoto.id,
+        latitude: currentPhoto.latitude ?? 0.0,
+        longitude: currentPhoto.longitude ?? 0.0,
+        hasExif: true,
+      );
+
+      // 성공 피드백
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('GPS 정보가 사진 파일에 성공적으로 저장되었습니다!')),
+      );
+
+      // 선택 해제 (다음 선택을 위해)
+      _selectedPhotoId = null;
+      photoProvider.setCurrentPhoto(null);
+      _addMarkersForPhotos(photoProvider.getPhotosWithGpsData());
+
+    } catch (e) {
+      // 실패 피드백
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('GPS 저장 실패: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,10 +255,22 @@ class _MapScreenState extends State<MapScreen> {
         myLocationEnabled: true,
         myLocationButtonEnabled: true,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _moveToCurrentLocation,
-        tooltip: '현재 위치로 이동',
-        child: const Icon(Icons.my_location),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: _saveGPSToPhoto,
+            tooltip: 'GPS 정보 저장',
+            backgroundColor: Theme.of(context).colorScheme.secondary,
+            child: const Icon(Icons.save),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            onPressed: _moveToCurrentLocation,
+            tooltip: '현재 위치로 이동',
+            child: const Icon(Icons.my_location),
+          ),
+        ],
       ),
     );
   }
