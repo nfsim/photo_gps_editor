@@ -12,7 +12,7 @@
 - **추천 IDE:** Visual Studio Code, Android Studio
 - **이미지 처리:** flutter_exif_plugin, image
 - **지도 API:** google_maps_flutter (Android/iOS), Apple Maps
-- **파일 접근:** file_picker, image_picker
+- **파일 접근:** file_picker
 - **권한 관리:** Android/iOS 파일 및 위치 권한
 - **AI 코딩 어시스턴트:** GitHub Copilot
 

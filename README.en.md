@@ -12,7 +12,7 @@
 - **Recommended IDE:** Visual Studio Code, Android Studio
 - **Image Processing:** flutter_exif_plugin, image
 - **Map API:** google_maps_flutter (Android/iOS), Apple Maps
-- **File Access:** file_picker, image_picker
+- **File Access:** file_picker
 - **Permissions:** Android/iOS file and location permissions
 
 ## 🚀 Main Features
