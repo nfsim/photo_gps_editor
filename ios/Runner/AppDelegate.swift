@@ -2,6 +2,11 @@ import Flutter
 import ImageIO
 import UIKit
 
+// TODO: Issue #11 - iOS GPS EXIF 쓰기 (ImageIO 구현 완료 - 검증 및 테스트 필요)
+// - 현재 ImageIO를 사용한 GPS EXIF 쓰기 코드가 구현되어 있음
+// - 실기기 테스트 및 권한 처리 검증 필요
+// - MethodChannel 이름 통일 (setGPS로 변경 예정)
+
 @main
 @objc class AppDelegate: FlutterAppDelegate {
   override func application(

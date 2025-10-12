@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/photo_model.dart';
 import '../providers/photo_provider.dart';
 import '../services/map_service.dart';
+import '../utils/exif_utils.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -163,6 +164,44 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  Future<void> _saveGPSToPhoto() async {
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+    final currentPhoto = photoProvider.currentPhoto;
+
+    if (currentPhoto == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('GPS를 저장할 사진을 선택해주세요.')));
+      return;
+    }
+
+    try {
+      // ScaffoldMessenger를 통해 진행 상황 표시
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('GPS 정보를 사진에 저장하는 중...')));
+
+      // GPS 주소를 파일에 저장 (현재 좌표 사용)
+      await ExifUtils.setGPS(
+        currentPhoto.path,
+        currentPhoto.latitude ?? 0.0,
+        currentPhoto.longitude ?? 0.0,
+      );
+
+      // 성공 피드백
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('GPS 정보가 사진 파일에 성공적으로 저장되었습니다!')),
+      );
+    } catch (e) {
+      // 실패 피드백
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('GPS 저장 실패: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,10 +219,22 @@ class _MapScreenState extends State<MapScreen> {
         myLocationEnabled: true,
         myLocationButtonEnabled: true,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _moveToCurrentLocation,
-        tooltip: '현재 위치로 이동',
-        child: const Icon(Icons.my_location),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: _saveGPSToPhoto,
+            tooltip: 'GPS 정보 저장',
+            child: const Icon(Icons.save),
+            backgroundColor: Theme.of(context).colorScheme.secondary,
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            onPressed: _moveToCurrentLocation,
+            tooltip: '현재 위치로 이동',
+            child: const Icon(Icons.my_location),
+          ),
+        ],
       ),
     );
   }

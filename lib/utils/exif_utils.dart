@@ -71,11 +71,10 @@ class ExifUtils {
     double longitude, [
     double altitude = 0,
   ]) async {
-    await _exifChannel.invokeMethod('setExifGPS', {
-      'path': path,
+    await _exifChannel.invokeMethod('setGPS', {
+      'filePath': path,
       'latitude': latitude,
       'longitude': longitude,
-      'altitude': altitude,
     });
   }
 }
