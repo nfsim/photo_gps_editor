@@ -1,12 +1,26 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:photo_gps_editor/utils/exif_utils.dart';
 
+// 테스트용 채널 핸들러
+const MethodChannel _exifChannel = MethodChannel(
+  'com.example.photo_gps_editor/exif',
+);
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late File tempTestFile;
 
   setUp(() {
+    // 플랫폼 채널 mocking
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          _exifChannel,
+          (call) async => {"exifSaved": true, "galleryAdded": true},
+        );
+
     // GPS 없는 테스트 파일을 복제하여 임시 파일 생성 (쓰기 테스트용)
     const sourcePath = 'test/resources/test_img_no_gps.jpeg';
     final sourceFile = File(sourcePath);
