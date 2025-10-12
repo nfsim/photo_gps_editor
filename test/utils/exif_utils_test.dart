@@ -10,7 +10,6 @@ void main() {
       final file = File(gpsImagePath);
       if (file.existsSync()) {
         final gpsData = await ExifUtils.readGPS(gpsImagePath);
-        print('GPS with GPS image: $gpsData');
         expect(gpsData.isNotEmpty, true);
         expect(gpsData['latitude'], isNotNull);
         expect(gpsData['latitude'] != 0.0, true);
@@ -26,7 +25,6 @@ void main() {
       final file = File(noGpsImagePath);
       if (file.existsSync()) {
         final gpsData = await ExifUtils.readGPS(noGpsImagePath);
-        print('GPS NO GPS image: $gpsData');
         expect(gpsData.isEmpty, true);
       } else {
         fail('Test No GPS image file not found: $noGpsImagePath');
@@ -44,7 +42,7 @@ void main() {
           returnsNormally,
         );
       } else {
-        print('Test image not available, skipping setGPS test');
+        fail('Test image not available for setGPS test');
       }
     });
   });
