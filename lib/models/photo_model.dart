@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../utils/exif_utils.dart';
+
 class PhotoModel {
   final String id; // 고유 ID
   final File file; // 이미지 파일
@@ -36,6 +38,45 @@ class PhotoModel {
   // 파일 사이즈 (바이트)
   Future<int> get fileSize async {
     return await file.length();
+  }
+
+  // GPS 정보를 업데이트하고 새로운 PhotoModel 반환
+  Future<PhotoModel> withNewGPS(
+    double latitude,
+    double longitude, [
+    double altitude = 0,
+  ]) async {
+    // EXIF에 GPS 정보 저장
+    await _updateExifGPS(latitude, longitude, altitude);
+    // 새 PhotoModel 반환
+    return copyWith(
+      latitude: latitude,
+      longitude: longitude,
+      hasExif: hasExif || true, // GPS 설정되었으므로 exif 존재
+    );
+  }
+
+  Future<void> _updateExifGPS(
+    double latitude,
+    double longitude, [
+    double altitude = 0,
+  ]) async {
+    if (await isWritable()) {
+      await ExifUtils.setGPS(path, latitude, longitude, altitude);
+    } else {
+      // 읽기 전용 파일은 EXIF 수정 불가능
+      // File is not writable, cannot update GPS EXIF
+    }
+  }
+
+  Future<bool> isWritable() async {
+    try {
+      // 파일이 쓰기 가능한 디렉토리에 있는지 임시 파일 생성으로 확인
+      await file.writeAsBytes([0], mode: FileMode.append, flush: true);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   PhotoModel copyWith({
