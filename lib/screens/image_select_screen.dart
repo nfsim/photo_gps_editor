@@ -1,11 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+// import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../models/photo_model.dart';
 import '../providers/photo_provider.dart';
 import '../widgets/permission_dialog.dart';
+import '../utils/exif_utils.dart';
+import 'map_screen.dart';
 
 class ImageSelectScreen extends StatefulWidget {
   const ImageSelectScreen({super.key});
@@ -15,8 +18,6 @@ class ImageSelectScreen extends StatefulWidget {
 }
 
 class _ImageSelectScreenState extends State<ImageSelectScreen> {
-  final ImagePicker _picker = ImagePicker();
-
   @override
   void initState() {
     super.initState();
@@ -47,19 +48,43 @@ class _ImageSelectScreenState extends State<ImageSelectScreen> {
       final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
       photoProvider.setSelecting(true);
 
-      final List<XFile> pickedFiles = await _picker.pickMultiImage(
-        imageQuality: 80, // 이미지 품질 최적화
-        maxWidth: 1920, // 최대 너비 제한
-        maxHeight: 1080, // 최대 높이 제한
+      final FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: true,
       );
 
-      if (pickedFiles.isNotEmpty) {
-        final files = pickedFiles.map((xFile) => File(xFile.path)).toList();
+      if (result != null && result.files.isNotEmpty) {
+        final files = result.files.map((file) => File(file.path!)).toList();
         photoProvider.addPhotos(files);
+
+        // Read GPS EXIF for each file
+        for (final file in files) {
+          final String photoId = file.path.hashCode.toString();
+          try {
+            final gps = await ExifUtils.readGPS(file.path);
+            if (gps.isNotEmpty &&
+                gps['latitude'] != null &&
+                gps['longitude'] != null) {
+              photoProvider.updatePhotoInfo(
+                photoId,
+                latitude: gps['latitude'],
+                longitude: gps['longitude'],
+                hasExif: true,
+              );
+              print(
+                'Updated photo $photoId with GPS: ${gps['latitude']}, ${gps['longitude']}',
+              );
+            } else {
+              print('No GPS found for photo $photoId');
+            }
+          } catch (e) {
+            // Ignore EXIF read errors
+          }
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${pickedFiles.length}장의 사진을 선택했습니다.')),
+            SnackBar(content: Text('${files.length}장의 사진을 선택했습니다.')),
           );
         }
       }
@@ -81,22 +106,13 @@ class _ImageSelectScreenState extends State<ImageSelectScreen> {
       final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
       photoProvider.setSelecting(true);
 
-      final XFile? photo = await _picker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 80,
-        maxWidth: 1920,
-        maxHeight: 1080,
-      );
+      // Camera functionality disabled for now - need to use file_picker for camera access
+      // TODO: Implement camera with file_picker or add back image_picker selectively
 
-      if (photo != null) {
-        final file = File(photo.path);
-        photoProvider.addPhoto(file);
-
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('사진이 촬영되었습니다.')));
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('카메라 기능은 현재 비활성화되었습니다.')));
       }
     } catch (e) {
       if (mounted) {
@@ -235,6 +251,22 @@ class _ImageSelectScreenState extends State<ImageSelectScreen> {
           ),
         ],
       ),
+
+      // 지도 보기 버튼 (FLOATING ACTION)
+      floatingActionButton: Consumer<PhotoProvider>(
+        builder: (context, photoProvider, child) {
+          if (photoProvider.selectedPhotos.isEmpty) return const SizedBox();
+          return FloatingActionButton(
+            onPressed:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => MapScreen()),
+                ),
+            tooltip: '지도에서 GPS 위치 확인',
+            child: const Icon(Icons.map),
+          );
+        },
+      ),
     );
   }
 }
@@ -281,7 +313,7 @@ class _PhotoGridItem extends StatelessWidget {
         if (photo.hasGpsData)
           Positioned(
             bottom: 4,
-            left: 4,
+            right: 4,
             child: Container(
               padding: const EdgeInsets.all(2),
               decoration: const BoxDecoration(

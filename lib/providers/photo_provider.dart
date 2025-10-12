@@ -1,10 +1,19 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/photo_model.dart';
+import '../models/gps_command.dart';
 
 class PhotoProvider extends ChangeNotifier {
   final List<PhotoModel> _selectedPhotos = [];
   bool _isSelecting = false; // 사진 선택 중인지 여부
+  PhotoModel? _currentPhoto;
+  final List<GPSCommand> _undoStack = [];
+  final List<GPSCommand> _redoStack = [];
+
+  // current photo for GPS editing
+  PhotoModel? get currentPhoto => _currentPhoto;
+  bool get canUndo => _undoStack.isNotEmpty;
+  bool get canRedo => _redoStack.isNotEmpty;
 
   // 선택된 사진 목록
   List<PhotoModel> get selectedPhotos => List.unmodifiable(_selectedPhotos);
@@ -106,5 +115,61 @@ class PhotoProvider extends ChangeNotifier {
     final photo = _selectedPhotos.removeAt(oldIndex);
     _selectedPhotos.insert(newIndex, photo);
     notifyListeners();
+  }
+
+  // GPS editing current photo management
+  void setCurrentPhoto(PhotoModel photo) {
+    if (_currentPhoto != photo) {
+      _currentPhoto = photo;
+      _undoStack.clear();
+      _redoStack.clear();
+      notifyListeners();
+    }
+  }
+
+  void setGPS(double latitude, double longitude) {
+    if (_currentPhoto == null) return;
+    final command = SetGPSCommand(latitude, longitude);
+    _currentPhoto = command.execute(_currentPhoto!);
+    _undoStack.add(command);
+    _redoStack.clear();
+    // Update in selected photos list
+    final index = _selectedPhotos.indexWhere((p) => p.id == _currentPhoto!.id);
+    if (index != -1) {
+      _selectedPhotos[index] = _currentPhoto!;
+    }
+    notifyListeners();
+  }
+
+  void undoGPS() {
+    if (_undoStack.isNotEmpty) {
+      final command = _undoStack.removeLast();
+      _currentPhoto = command.undo();
+      _redoStack.add(command);
+      // Update in selected photos list
+      final index = _selectedPhotos.indexWhere(
+        (p) => p.id == _currentPhoto!.id,
+      );
+      if (index != -1) {
+        _selectedPhotos[index] = _currentPhoto!;
+      }
+      notifyListeners();
+    }
+  }
+
+  void redoGPS() {
+    if (_redoStack.isNotEmpty) {
+      final command = _redoStack.removeLast();
+      _currentPhoto = command.execute(_currentPhoto!);
+      _undoStack.add(command);
+      // Update in selected photos list
+      final index = _selectedPhotos.indexWhere(
+        (p) => p.id == _currentPhoto!.id,
+      );
+      if (index != -1) {
+        _selectedPhotos[index] = _currentPhoto!;
+      }
+      notifyListeners();
+    }
   }
 }

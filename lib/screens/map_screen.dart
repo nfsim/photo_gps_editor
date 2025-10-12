@@ -17,6 +17,36 @@ class _MapScreenState extends State<MapScreen> {
   final Set<Marker> _markers = {};
   final CameraPosition _initialCameraPosition =
       MapService.getInitialCameraPosition();
+  String? _selectedPhotoId;
+  bool _isMapReady = false;
+
+  void _onMarkerTap(String markerId) {
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+    final photo = photoProvider.selectedPhotos.firstWhere(
+      (p) => p.id == markerId,
+      orElse: () => throw Exception('Photo not found'),
+    );
+
+    photoProvider.setCurrentPhoto(photo);
+    setState(() {
+      _selectedPhotoId = markerId;
+    });
+  }
+
+  void _onMarkerDragEnd(String markerId, LatLng position) {
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+    // photoProvider.setGPS(position.latitude, position.longitude);
+    // TODO: GPS EXIF modification not fully implemented across platforms
+    print('GPS modification not implemented');
+  }
+
+  void _undo() {
+    Provider.of<PhotoProvider>(context, listen: false).undoGPS();
+  }
+
+  void _redo() {
+    Provider.of<PhotoProvider>(context, listen: false).redoGPS();
+  }
 
   @override
   void initState() {
@@ -27,31 +57,18 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _initializeMap() async {
     // 위치 권한 요청
     await MapService.requestLocationPermission();
-
-    // 사진 위치 마커 설정 (다음 프레임 실행)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _setupMapWithPhotoLocations();
-    });
   }
 
-  void _setupMapWithPhotoLocations() {
-    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
-    final photosWithGps = photoProvider.getPhotosWithGpsData();
-
-    if (photosWithGps.isNotEmpty) {
-      _addMarkersForPhotos(photosWithGps);
-      _adjustCameraToFitPhotos(photosWithGps);
-    }
-  }
-
-  void _addMarkersForPhotos(List<PhotoModel> photos) {
-    setState(() {
-      _markers.clear();
-      for (final photo in photos) {
-        if (photo.latitude != null && photo.longitude != null) {
-          final markerId = MarkerId(photo.id);
-          _markers.add(
-            Marker(
+  Set<Marker> _createMarkers(List<PhotoModel> photos, String? selectedId) {
+    return photos
+        .map((photo) {
+          if (photo.latitude != null && photo.longitude != null) {
+            final markerId = MarkerId(photo.id);
+            final isSelected = selectedId == photo.id;
+            print(
+              'Creating marker for ${photo.id} at lat=${photo.latitude}, lon=${photo.longitude}',
+            );
+            return Marker(
               markerId: markerId,
               position: LatLng(photo.latitude!, photo.longitude!),
               infoWindow: InfoWindow(
@@ -60,13 +77,17 @@ class _MapScreenState extends State<MapScreen> {
                 onTap: () => _showPhotoDetails(photo),
               ),
               icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueAzure,
+                isSelected
+                    ? BitmapDescriptor.hueGreen
+                    : BitmapDescriptor.hueAzure,
               ),
-            ),
-          );
-        }
-      }
-    });
+              draggable: isSelected,
+            );
+          }
+          return null;
+        })
+        .whereType<Marker>()
+        .toSet();
   }
 
   void _adjustCameraToFitPhotos(List<PhotoModel> photos) {
@@ -119,6 +140,9 @@ class _MapScreenState extends State<MapScreen> {
 
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
+    setState(() {
+      _isMapReady = true;
+    });
   }
 
   Future<void> _moveToCurrentLocation() async {
@@ -127,20 +151,6 @@ class _MapScreenState extends State<MapScreen> {
       await _mapController.animateCamera(
         CameraUpdate.newLatLngZoom(currentLocation, 15.0),
       );
-
-      // 현재 위치 마커 추가 (옵션)
-      setState(() {
-        _markers.add(
-          Marker(
-            markerId: const MarkerId('current_location'),
-            position: currentLocation,
-            infoWindow: const InfoWindow(title: '현재 위치'),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueGreen,
-            ),
-          ),
-        );
-      });
     } else {
       // 권한이 없을 때 다이얼로그 표시
       if (!mounted) return;
@@ -170,20 +180,54 @@ class _MapScreenState extends State<MapScreen> {
         title: const Text('사진 위치 지도'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: GoogleMap(
-        onMapCreated: _onMapCreated,
-        initialCameraPosition: _initialCameraPosition,
-        markers: _markers,
-        zoomControlsEnabled: true,
-        mapToolbarEnabled: true,
-        compassEnabled: true,
-        myLocationEnabled: true,
-        myLocationButtonEnabled: true,
+      body: Consumer<PhotoProvider>(
+        builder: (context, photoProvider, child) {
+          final photos = photoProvider.getPhotosWithGpsData();
+          if (photos.isNotEmpty && _isMapReady) {
+            _adjustCameraToFitPhotos(photos);
+          }
+          final markers = _createMarkers(
+            photos,
+            photoProvider.currentPhoto?.id,
+          );
+          return GoogleMap(
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: _initialCameraPosition,
+            markers: markers,
+            zoomControlsEnabled: true,
+            mapToolbarEnabled: true,
+            compassEnabled: true,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
+          );
+        },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _moveToCurrentLocation,
-        tooltip: '현재 위치로 이동',
-        child: const Icon(Icons.my_location),
+      floatingActionButton: Consumer<PhotoProvider>(
+        builder:
+            (context, provider, child) => Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (provider.canUndo)
+                  FloatingActionButton(
+                    onPressed: _undo,
+                    tooltip: 'GPS 수정 취소',
+                    child: const Icon(Icons.undo),
+                  ),
+                if (provider.canUndo) const SizedBox(height: 8),
+                if (provider.canRedo)
+                  FloatingActionButton(
+                    onPressed: _redo,
+                    tooltip: 'GPS 수정 다시 실행',
+                    child: const Icon(Icons.redo),
+                  ),
+                if (provider.canRedo) const SizedBox(height: 8),
+                FloatingActionButton(
+                  onPressed: _moveToCurrentLocation,
+                  tooltip: '현재 위치로 이동',
+                  child: const Icon(Icons.my_location),
+                ),
+              ],
+            ),
       ),
     );
   }
