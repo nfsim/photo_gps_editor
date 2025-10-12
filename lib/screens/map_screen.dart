@@ -14,9 +14,20 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   late GoogleMapController _mapController;
+  final Set<Marker> _markers = {};
   final CameraPosition _initialCameraPosition =
       MapService.getInitialCameraPosition();
   bool _isMapReady = false;
+
+  void _onMarkerTap(String markerId) {
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+    final photo = photoProvider.selectedPhotos.firstWhere(
+      (p) => p.id == markerId,
+      orElse: () => throw Exception('Photo not found'),
+    );
+
+    photoProvider.setCurrentPhoto(photo);
+  }
 
   void _undo() {
     Provider.of<PhotoProvider>(context, listen: false).undoGPS();
@@ -35,6 +46,21 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _initializeMap() async {
     // 위치 권한 요청
     await MapService.requestLocationPermission();
+
+    // 사진 위치 마커 설정 (다음 프레임 실행)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupMapWithPhotoLocations();
+    });
+  }
+
+  void _setupMapWithPhotoLocations() {
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+    final photosWithGps = photoProvider.getPhotosWithGpsData();
+
+    if (photosWithGps.isNotEmpty) {
+      _addMarkersForPhotos(photosWithGps);
+      _adjustCameraToFitPhotos(photosWithGps);
+    }
   }
 
   Set<Marker> _createMarkers(List<PhotoModel> photos, String? selectedId) {
@@ -43,7 +69,9 @@ class _MapScreenState extends State<MapScreen> {
           if (photo.latitude != null && photo.longitude != null) {
             final markerId = MarkerId(photo.id);
             final isSelected = selectedId == photo.id;
-
+            print(
+              'Creating marker for ${photo.id} at lat=${photo.latitude}, lon=${photo.longitude}',
+            );
             return Marker(
               markerId: markerId,
               position: LatLng(photo.latitude!, photo.longitude!),
@@ -64,6 +92,31 @@ class _MapScreenState extends State<MapScreen> {
         })
         .whereType<Marker>()
         .toSet();
+  }
+
+  void _addMarkersForPhotos(List<PhotoModel> photos) {
+    setState(() {
+      _markers.clear();
+      for (final photo in photos) {
+        if (photo.latitude != null && photo.longitude != null) {
+          final markerId = MarkerId(photo.id);
+          _markers.add(
+            Marker(
+              markerId: markerId,
+              position: LatLng(photo.latitude!, photo.longitude!),
+              infoWindow: InfoWindow(
+                title: '사진 위치',
+                snippet: photo.takenDate?.toString() ?? '촬영일 미상',
+                onTap: () => _showPhotoDetails(photo),
+              ),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueAzure,
+              ),
+            ),
+          );
+        }
+      }
+    });
   }
 
   void _adjustCameraToFitPhotos(List<PhotoModel> photos) {
@@ -127,6 +180,20 @@ class _MapScreenState extends State<MapScreen> {
       await _mapController.animateCamera(
         CameraUpdate.newLatLngZoom(currentLocation, 15.0),
       );
+
+      // 현재 위치 마커 추가 (옵션)
+      setState(() {
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('current_location'),
+            position: currentLocation,
+            infoWindow: const InfoWindow(title: '현재 위치'),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueGreen,
+            ),
+          ),
+        );
+      });
     } else {
       // 권한이 없을 때 다이얼로그 표시
       if (!mounted) return;
@@ -156,54 +223,20 @@ class _MapScreenState extends State<MapScreen> {
         title: const Text('사진 위치 지도'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: Consumer<PhotoProvider>(
-        builder: (context, photoProvider, child) {
-          final photos = photoProvider.getPhotosWithGpsData();
-          if (photos.isNotEmpty && _isMapReady) {
-            _adjustCameraToFitPhotos(photos);
-          }
-          final markers = _createMarkers(
-            photos,
-            photoProvider.currentPhoto?.id,
-          );
-          return GoogleMap(
-            onMapCreated: _onMapCreated,
-            initialCameraPosition: _initialCameraPosition,
-            markers: markers,
-            zoomControlsEnabled: true,
-            mapToolbarEnabled: true,
-            compassEnabled: true,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
-          );
-        },
+      body: GoogleMap(
+        onMapCreated: _onMapCreated,
+        initialCameraPosition: _initialCameraPosition,
+        markers: _markers,
+        zoomControlsEnabled: true,
+        mapToolbarEnabled: true,
+        compassEnabled: true,
+        myLocationEnabled: true,
+        myLocationButtonEnabled: true,
       ),
-      floatingActionButton: Consumer<PhotoProvider>(
-        builder:
-            (context, provider, child) => Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (provider.canUndo)
-                  FloatingActionButton(
-                    onPressed: _undo,
-                    tooltip: 'GPS 수정 취소',
-                    child: const Icon(Icons.undo),
-                  ),
-                if (provider.canUndo) const SizedBox(height: 8),
-                if (provider.canRedo)
-                  FloatingActionButton(
-                    onPressed: _redo,
-                    tooltip: 'GPS 수정 다시 실행',
-                    child: const Icon(Icons.redo),
-                  ),
-                if (provider.canRedo) const SizedBox(height: 8),
-                FloatingActionButton(
-                  onPressed: _moveToCurrentLocation,
-                  tooltip: '현재 위치로 이동',
-                  child: const Icon(Icons.my_location),
-                ),
-              ],
-            ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _moveToCurrentLocation,
+        tooltip: '현재 위치로 이동',
+        child: const Icon(Icons.my_location),
       ),
     );
   }
