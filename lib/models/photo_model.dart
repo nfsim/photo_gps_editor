@@ -65,7 +65,7 @@ class PhotoModel {
       await ExifUtils.setGPS(path, latitude, longitude, altitude);
     } else {
       // 읽기 전용 파일은 EXIF 수정 불가능
-      print('File is not writable, cannot update GPS EXIF: $path');
+      // File is not writable, cannot update GPS EXIF
     }
   }
 

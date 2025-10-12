@@ -14,31 +14,9 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   late GoogleMapController _mapController;
-  final Set<Marker> _markers = {};
   final CameraPosition _initialCameraPosition =
       MapService.getInitialCameraPosition();
-  String? _selectedPhotoId;
   bool _isMapReady = false;
-
-  void _onMarkerTap(String markerId) {
-    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
-    final photo = photoProvider.selectedPhotos.firstWhere(
-      (p) => p.id == markerId,
-      orElse: () => throw Exception('Photo not found'),
-    );
-
-    photoProvider.setCurrentPhoto(photo);
-    setState(() {
-      _selectedPhotoId = markerId;
-    });
-  }
-
-  void _onMarkerDragEnd(String markerId, LatLng position) {
-    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
-    // photoProvider.setGPS(position.latitude, position.longitude);
-    // TODO: GPS EXIF modification not fully implemented across platforms
-    print('GPS modification not implemented');
-  }
 
   void _undo() {
     Provider.of<PhotoProvider>(context, listen: false).undoGPS();
@@ -65,9 +43,7 @@ class _MapScreenState extends State<MapScreen> {
           if (photo.latitude != null && photo.longitude != null) {
             final markerId = MarkerId(photo.id);
             final isSelected = selectedId == photo.id;
-            print(
-              'Creating marker for ${photo.id} at lat=${photo.latitude}, lon=${photo.longitude}',
-            );
+
             return Marker(
               markerId: markerId,
               position: LatLng(photo.latitude!, photo.longitude!),

@@ -71,11 +71,8 @@ class _ImageSelectScreenState extends State<ImageSelectScreen> {
                 longitude: gps['longitude'],
                 hasExif: true,
               );
-              print(
-                'Updated photo $photoId with GPS: ${gps['latitude']}, ${gps['longitude']}',
-              );
             } else {
-              print('No GPS found for photo $photoId');
+              // No GPS data in photo
             }
           } catch (e) {
             // Ignore EXIF read errors

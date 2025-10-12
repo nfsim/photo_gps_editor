@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:exif/exif.dart';
 import 'package:flutter/services.dart';
-import 'package:path/path.dart' as p;
 
 const MethodChannel _exifChannel = MethodChannel(
   'com.example.photo_gps_editor/exif',
@@ -10,43 +9,26 @@ const MethodChannel _exifChannel = MethodChannel(
 class ExifUtils {
   static Future<Map<String, double?>> readGPS(String path) async {
     try {
-      print('Reading EXIF for file: ${p.basename(path)}');
       final file = File(path);
       final bytes = await file.readAsBytes();
       final Map<String, IfdTag> data = await readExifFromBytes(bytes);
-      // TEMP LOGS TO REMOVE AFTER DEBUGGING
-      print('All EXIF keys: ${data.keys.toList()}');
-      print(
-        'EXIF data keys for GPS: ${data.keys.where((k) => k.contains('GPS'))}',
-      );
-      for (var key in data.keys.where((k) => k.contains('GPS'))) {
-        print(
-          'GPS Tag $key: ${data[key]}, values: ${data[key]!.values}, toList: ${data[key]!.values.toList()}',
-        );
-      }
 
       if (!data.containsKey('GPS GPSLatitude') ||
           !data.containsKey('GPS GPSLongitude') ||
           !data.containsKey('GPS GPSLatitudeRef') ||
           !data.containsKey('GPS GPSLongitudeRef')) {
-        print('GPS tags not found in EXIF');
         return {};
       }
 
-      final latValsList = data['GPS GPSLatitude']!.values.toList() as List;
-      final latRefList = data['GPS GPSLatitudeRef']!.values.toList() as List;
-      final lonValsList = data['GPS GPSLongitude']!.values.toList() as List;
-      final lonRefList = data['GPS GPSLongitudeRef']!.values.toList() as List;
-
-      print(
-        'latValsList: $latValsList, latRefList: $latRefList, lonValsList: $lonValsList, lonRefList: $lonRefList',
-      );
+      final latValsList = data['GPS GPSLatitude']!.values.toList();
+      final latRefList = data['GPS GPSLatitudeRef']!.values.toList();
+      final lonValsList = data['GPS GPSLongitude']!.values.toList();
+      final lonRefList = data['GPS GPSLongitudeRef']!.values.toList();
 
       if (latValsList.isEmpty ||
           latRefList.isEmpty ||
           lonValsList.isEmpty ||
           lonRefList.isEmpty) {
-        print('GPS lists empty');
         return {};
       }
 
@@ -55,15 +37,10 @@ class ExifUtils {
       final lonVals = lonValsList;
       final lonRef = String.fromCharCode(lonRefList[0].toInt());
 
-      print(
-        'LatVals: $latVals, LatRef: $latRef, LonVals: $lonVals, LonRef: $lonRef',
-      );
-
       if (latVals.isEmpty ||
           lonVals.isEmpty ||
           latVals.length < 3 ||
           lonVals.length < 3) {
-        print('GPS values malformed or empty');
         return {};
       }
 
@@ -81,11 +58,9 @@ class ExifUtils {
           (lonDegrees + lonMinutes / 60 + lonSeconds / 3600) *
           (lonRef == 'E' ? 1 : -1);
 
-      print('Calculated GPS: lat=$lat, lon=$lon');
-
       return {'latitude': lat, 'longitude': lon};
     } catch (e) {
-      print('EXIF read error: $e');
+      // EXIF read error - ignored for robustness
       return {};
     }
   }
