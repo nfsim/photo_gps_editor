@@ -14,13 +14,16 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  late GoogleMapController _mapController;
+  GoogleMapController? _mapController;
   final Set<Marker> _markers = {};
   final CameraPosition _initialCameraPosition =
       MapService.getInitialCameraPosition();
 
   // 선택된 사진 ID 추적
   String? _selectedPhotoId;
+
+  // 수동 GPS 마커 (Long Press로 설정한 좌표)
+  Marker? _manualGpsMarker;
 
   @override
   void initState() {
@@ -73,6 +76,11 @@ class _MapScreenState extends State<MapScreen> {
             ),
           );
         }
+      }
+
+      // 수동 GPS 마커 추가
+      if (_manualGpsMarker != null) {
+        _markers.add(_manualGpsMarker!);
       }
     });
   }
@@ -134,20 +142,69 @@ class _MapScreenState extends State<MapScreen> {
         northeast: LatLng(maxLat, maxLng),
       );
 
-      _mapController.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+      _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
     }
   }
-
-
 
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
   }
 
+  void _onMapLongPress(LatLng position) {
+    setState(() {
+      // 기존 GPS 마커 제거
+      _manualGpsMarker = Marker(
+        markerId: const MarkerId('manual_gps_marker'),
+        position: position,
+        infoWindow: InfoWindow(
+          title: '📍 수동 GPS 설정 위치',
+          snippet:
+              '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
+          onTap: () {
+            // 마커 터치 시 제거
+            setState(() {
+              _manualGpsMarker = null;
+              _updateMarkers();
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('수동 GPS 설정 위치가 해제되었습니다'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          },
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+      );
+
+      _updateMarkers();
+    });
+
+    // PhotoProvider에 GPS 좌표 설정
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+    photoProvider.setGPS(position.latitude, position.longitude);
+
+    // 사용자 피드백
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'GPS 좌표가 설정되었습니다: (${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)})',
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _updateMarkers() {
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+    final photosWithGps = photoProvider.getPhotosWithGpsData();
+    _addMarkersForPhotos(photosWithGps);
+  }
+
   Future<void> _moveToCurrentLocation() async {
     final LatLng? currentLocation = await MapService.getCurrentLocation();
     if (currentLocation != null) {
-      await _mapController.animateCamera(
+      await _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(currentLocation, 15.0),
       );
 
@@ -228,7 +285,6 @@ class _MapScreenState extends State<MapScreen> {
       _selectedPhotoId = null;
       photoProvider.setCurrentPhoto(null);
       _addMarkersForPhotos(photoProvider.getPhotosWithGpsData());
-
     } catch (e) {
       // 실패 피드백
       if (!mounted) return;
@@ -247,6 +303,7 @@ class _MapScreenState extends State<MapScreen> {
       ),
       body: GoogleMap(
         onMapCreated: _onMapCreated,
+        onLongPress: _onMapLongPress,
         initialCameraPosition: _initialCameraPosition,
         markers: _markers,
         zoomControlsEnabled: true,
@@ -277,7 +334,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
-    _mapController.dispose();
+    _mapController?.dispose();
     super.dispose();
   }
 }
