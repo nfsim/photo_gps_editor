@@ -17,25 +17,6 @@ class _MapScreenState extends State<MapScreen> {
   final Set<Marker> _markers = {};
   final CameraPosition _initialCameraPosition =
       MapService.getInitialCameraPosition();
-  bool _isMapReady = false;
-
-  void _onMarkerTap(String markerId) {
-    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
-    final photo = photoProvider.selectedPhotos.firstWhere(
-      (p) => p.id == markerId,
-      orElse: () => throw Exception('Photo not found'),
-    );
-
-    photoProvider.setCurrentPhoto(photo);
-  }
-
-  void _undo() {
-    Provider.of<PhotoProvider>(context, listen: false).undoGPS();
-  }
-
-  void _redo() {
-    Provider.of<PhotoProvider>(context, listen: false).redoGPS();
-  }
 
   @override
   void initState() {
@@ -61,37 +42,6 @@ class _MapScreenState extends State<MapScreen> {
       _addMarkersForPhotos(photosWithGps);
       _adjustCameraToFitPhotos(photosWithGps);
     }
-  }
-
-  Set<Marker> _createMarkers(List<PhotoModel> photos, String? selectedId) {
-    return photos
-        .map((photo) {
-          if (photo.latitude != null && photo.longitude != null) {
-            final markerId = MarkerId(photo.id);
-            final isSelected = selectedId == photo.id;
-            print(
-              'Creating marker for ${photo.id} at lat=${photo.latitude}, lon=${photo.longitude}',
-            );
-            return Marker(
-              markerId: markerId,
-              position: LatLng(photo.latitude!, photo.longitude!),
-              infoWindow: InfoWindow(
-                title: '사진 위치',
-                snippet: photo.takenDate?.toString() ?? '촬영일 미상',
-                onTap: () => _showPhotoDetails(photo),
-              ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                isSelected
-                    ? BitmapDescriptor.hueGreen
-                    : BitmapDescriptor.hueAzure,
-              ),
-              draggable: isSelected,
-            );
-          }
-          return null;
-        })
-        .whereType<Marker>()
-        .toSet();
   }
 
   void _addMarkersForPhotos(List<PhotoModel> photos) {
@@ -169,9 +119,6 @@ class _MapScreenState extends State<MapScreen> {
 
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
-    setState(() {
-      _isMapReady = true;
-    });
   }
 
   Future<void> _moveToCurrentLocation() async {
