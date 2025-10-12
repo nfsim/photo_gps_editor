@@ -1,10 +1,18 @@
 package com.example.photo_gps_editor
 
+import android.content.ContentValues
 import android.media.ExifInterface
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
+import java.io.FileInputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : FlutterActivity() {
     private val EXIF_CHANNEL = "com.example.photo_gps_editor/exif"
@@ -39,7 +47,14 @@ class MainActivity : FlutterActivity() {
                                 val success = writeGpsToExif(filePath, latitude, longitude)
 
                                 if (success) {
-                                    result.success(true)
+                                    // GPS 저장 후 갤러리에도 추가 시도
+                                    val gallerySuccess = saveToGallery(filePath)
+                                    result.success(
+                                            mapOf(
+                                                    "exifSaved" to true,
+                                                    "galleryAdded" to gallerySuccess
+                                            )
+                                    )
                                     Log.d(TAG, "GPS EXIF write successful")
                                 } else {
                                     result.error(
@@ -99,5 +114,52 @@ class MainActivity : FlutterActivity() {
 
         // Use rational format: degrees/1,minutes/1,seconds/1
         return "$degrees/1,$minutes/1,$seconds/1"
+    }
+
+    private fun saveToGallery(filePath: String): Boolean {
+        return try {
+            val sourceFile = File(filePath)
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val fileName = "GPS_edited_${timestamp}.jpg"
+
+            // MediaStore를 사용하여 갤러리에 새 파일 추가
+            val contentValues =
+                    ContentValues().apply {
+                        put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                        put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                        put(
+                                MediaStore.MediaColumns.RELATIVE_PATH,
+                                Environment.DIRECTORY_PICTURES + "/PhotoGpsEditor"
+                        )
+                        put(MediaStore.MediaColumns.IS_PENDING, 1)
+                    }
+
+            val contentResolver = contentResolver
+            val uri =
+                    contentResolver.insert(
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                            contentValues
+                    )
+
+            uri?.let {
+                contentResolver.openOutputStream(it)?.use { outputStream ->
+                    FileInputStream(sourceFile).use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+
+                // 파일 완료 표시
+                contentValues.clear()
+                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                contentResolver.update(uri, contentValues, null, null)
+
+                Log.d(TAG, "File saved to gallery: $fileName")
+                true
+            }
+                    ?: false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving to gallery: ${e.message}", e)
+            false
+        }
     }
 }
