@@ -364,6 +364,9 @@ class _MapScreenState extends State<MapScreen> {
           hasExif: true,
         );
 
+        // PhotoProvider에서 GPS 좌표 업데이트 (important!)
+        photoProvider.setGPS(position.latitude, position.longitude);
+
         // 마커 제거
         setState(() {
           _manualGpsMarker = null;
