@@ -166,15 +166,12 @@ class _MapScreenState extends State<MapScreen> {
 
   void _onMapLongPress(LatLng position) {
     final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
-    final selectedPhotosWithoutGps =
-        photoProvider.selectedPhotos.where((p) => !p.hasGpsData).toList();
+    final selectedPhotos = photoProvider.selectedPhotos;
 
-    if (selectedPhotosWithoutGps.isEmpty) {
+    if (selectedPhotos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'GPS 좌표를 적용할 수 있는 사진이 없습니다.\n모든 선택된 사진에 이미 GPS 정보가 있습니다.',
-          ),
+          content: Text('GPS 좌표를 적용할 사진이 선택되지 않았습니다.\n먼저 사진을 선택해주세요.'),
           duration: Duration(seconds: 3),
         ),
       );
@@ -505,24 +502,20 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
-    final selectedPhotosWithoutGps =
-        photoProvider.selectedPhotos.where((p) => !p.hasGpsData).toList();
+    final selectedPhotos = photoProvider.selectedPhotos;
 
-    if (selectedPhotosWithoutGps.isEmpty) {
+    if (selectedPhotos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('GPS 좌표를 적용할 사진이 없습니다.\n모든 선택된 사진에 이미 GPS 정보가 있습니다.'),
+          content: Text('GPS 좌표를 적용할 사진이 없습니다.\n먼저 사진을 선택해주세요.'),
           duration: Duration(seconds: 3),
         ),
       );
       return;
     }
 
-    // 선택된 GPS 위치를 GPS 없는 사진들에 적용
-    await _applyGpsToSelectedPhotos(
-      _selectedLocationForGPS!,
-      selectedPhotosWithoutGps,
-    );
+    // 선택된 GPS 위치를 모든 선택된 사진에 적용 (GPS 있던 없던)
+    await _applyGpsToSelectedPhotos(_selectedLocationForGPS!, selectedPhotos);
 
     // 적용 완료 후 선택된 위치 클리어
     setState(() {
