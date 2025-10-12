@@ -24,6 +24,8 @@ class _MapScreenState extends State<MapScreen> {
 
   // 수동 GPS 마커 (Long Press로 설정한 좌표)
   Marker? _manualGpsMarker;
+  // 수동 GPS 좌표 (마커에서 사용)
+  LatLng? _manualGpsCoordinates;
 
   @override
   void initState() {
@@ -151,25 +153,43 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _onMapLongPress(LatLng position) {
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+    final currentPhoto = photoProvider.currentPhoto;
+
+    if (currentPhoto == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('GPS 좌표를 설정하기 전에 사진을 먼저 선택해주세요.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     setState(() {
+      // 수동 GPS 좌표 저장
+      _manualGpsCoordinates = position;
+
       // 기존 GPS 마커 제거
       _manualGpsMarker = Marker(
         markerId: const MarkerId('manual_gps_marker'),
         position: position,
         infoWindow: InfoWindow(
-          title: '📍 수동 GPS 설정 위치',
+          title: '📍 수동 GPS 설정 위치 - 터치로 선택',
           snippet:
               '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
           onTap: () {
-            // 마커 터치 시 제거
-            setState(() {
-              _manualGpsMarker = null;
-              _updateMarkers();
-            });
+            // 마커 터치 시 해당 좌표 선택 상태로 만들기
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('수동 GPS 설정 위치가 해제되었습니다'),
-                duration: Duration(seconds: 2),
+              SnackBar(
+                content: Text(
+                  'GPS 좌표 선택됨: (${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)})',
+                ),
+                action: SnackBarAction(
+                  label: '저장',
+                  onPressed: () => _saveGPSToPhotoAtCoordinates(position),
+                ),
+                duration: const Duration(seconds: 4),
               ),
             );
           },
@@ -179,10 +199,6 @@ class _MapScreenState extends State<MapScreen> {
 
       _updateMarkers();
     });
-
-    // PhotoProvider에 GPS 좌표 설정
-    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
-    photoProvider.setGPS(position.latitude, position.longitude);
 
     // 사용자 피드백
     ScaffoldMessenger.of(context).showSnackBar(
@@ -290,6 +306,67 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('GPS 저장 실패: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _saveGPSToPhotoAtCoordinates(LatLng position) async {
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+    final currentPhoto = photoProvider.currentPhoto;
+
+    if (currentPhoto == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('GPS를 저장할 사진을 선택해주세요.')));
+      return;
+    }
+
+    try {
+      // ScaffoldMessenger를 통해 진행 상황 표시
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('수동 GPS 좌표를 사진에 저장하는 중...')));
+
+      // GPS 주소를 파일에 저장 (선택된 좌표 사용)
+      await ExifUtils.setGPS(
+        currentPhoto.path,
+        position.latitude,
+        position.longitude,
+      );
+
+      // 성공 후 사진 정보 업데이트 (GPS 데이터 추가됨 표시)
+      photoProvider.updatePhotoInfo(
+        currentPhoto.id,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        hasExif: true,
+      );
+
+      // 마커 제거
+      setState(() {
+        _manualGpsMarker = null;
+        _manualGpsCoordinates = null;
+        _updateMarkers();
+      });
+
+      // 성공 피드백
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('수동 GPS 좌표가 사진에 성공적으로 저장되었습니다!')),
+      );
+
+      // 선택 해제 (다음 선택을 위해)
+      _selectedPhotoId = null;
+      photoProvider.setCurrentPhoto(null);
+      _addMarkersForPhotos(photoProvider.getPhotosWithGpsData());
+    } catch (e) {
+      // 실패 피드백
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('수동 GPS 저장 실패: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
