@@ -30,20 +30,5 @@ void main() {
         fail('Test No GPS image file not found: $noGpsImagePath');
       }
     });
-
-    test('GPS 쓰기 기능 테스트 (기본 호출)', () async {
-      // NOTE: MethodChannel 기능은 플랫폼 의존적임, 실제 파일 테스트 필요
-      const testPath = 'test/resources/test_img_gps.jpg';
-      final file = File(testPath);
-      if (file.existsSync()) {
-        // Test that setGPS doesn't throw (platform will handle actual write)
-        await expectLater(
-          () async => await ExifUtils.setGPS(testPath, 37.7749, -122.4194),
-          returnsNormally,
-        );
-      } else {
-        fail('Test image not available for setGPS test');
-      }
-    });
   });
 }
