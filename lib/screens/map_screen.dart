@@ -152,19 +152,23 @@ class _MapScreenState extends State<MapScreen> {
     _mapController = controller;
   }
 
-  void _onMapLongPress(LatLng position) {
+  void _onMapLongPress(LatLng position) async {
     final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
-    final currentPhoto = photoProvider.currentPhoto;
+    final selectedPhotos =
+        photoProvider.selectedPhotos.where((p) => !p.hasGpsData).toList();
 
-    if (currentPhoto == null) {
+    if (selectedPhotos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('GPS 좌표를 설정하기 전에 사진을 먼저 선택해주세요.'),
-          duration: Duration(seconds: 2),
+          content: Text('GPS 좌표를 저장할 사진이 없습니다.\n모든 선택된 사진에 이미 GPS 정보가 있습니다.'),
+          duration: Duration(seconds: 3),
         ),
       );
       return;
     }
+
+    // GPS 없는 선택된 사진들에 Long Press 좌표 적용
+    await _applyGpsToSelectedPhotos(position, selectedPhotos);
 
     setState(() {
       // 수동 GPS 좌표 저장
@@ -326,6 +330,86 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('GPS 저장 실패: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _applyGpsToSelectedPhotos(
+    LatLng position,
+    List<PhotoModel> photosToApply,
+  ) async {
+    final photoProvider = Provider.of<PhotoProvider>(context, listen: false);
+    final results = <Map<String, dynamic>>[];
+
+    // 각 사진에 GPS 좌표 적용
+    for (final photo in photosToApply) {
+      try {
+        final result = await ExifUtils.setGPS(
+          photo.path,
+          position.latitude,
+          position.longitude,
+        );
+
+        if (result.containsKey('exifSaved') && result['exifSaved'] == true) {
+          // PhotoProvider 업데이트
+          photoProvider.setGPS(position.latitude, position.longitude);
+          photoProvider.updatePhotoInfo(
+            photo.id,
+            latitude: position.latitude,
+            longitude: position.longitude,
+            hasExif: true,
+          );
+          results.add({
+            'photo': photo,
+            'success': true,
+            'galleryAdded': result['galleryAdded'] ?? false,
+          });
+        } else {
+          results.add({'photo': photo, 'success': false});
+        }
+      } catch (e) {
+        results.add({'photo': photo, 'success': false, 'error': e.toString()});
+      }
+    }
+
+    // 결과 정리 및 피드백
+    final successCount = results.where((r) => r['success'] == true).length;
+    final totalCount = photosToApply.length;
+
+    if (successCount > 0) {
+      await _handleSuccessfulGpsApplication(successCount, totalCount, results);
+    }
+
+    // 마커 업데이트 - 새로 적용된 GPS 사진들을 파란색 마커로 표시
+    _updateMarkers();
+  }
+
+  Future<void> _handleSuccessfulGpsApplication(
+    int successCount,
+    int totalCount,
+    List<Map<String, dynamic>> results,
+  ) async {
+    final galleryAdded = results.where((r) => r['galleryAdded'] == true).length;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          successCount == totalCount
+              ? '$successCount/$totalCount장의 사진에 GPS 좌표가 적용되었습니다.\n${galleryAdded > 0 ? '갤러리에도 복사되었습니다.' : ''}'
+              : '$successCount/$totalCount장의 사진에 GPS 좌표가 적용되었습니다.\n일부 사진은 실패했습니다.',
+        ),
+        duration: const Duration(seconds: 5),
+      ),
+    );
+
+    if (galleryAdded > 0) {
+      // 갤러리가 업데이트되었으므로 추가 안내
+      await Future.delayed(const Duration(seconds: 3));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Google Photos에서 새로고침하여 GPS 정보가 표시되는지 확인해보세요.'),
+          duration: Duration(seconds: 3),
+        ),
       );
     }
   }
